@@ -57,9 +57,11 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	private final AtomicLong fileId = new AtomicLong(1); // numbering starts at 1
 	private final NfsIdMapping _idMapper = new SimpleIdMap();
 
-	@Override
 	/**
 	 * Check access to file system object.
+	 * <p/>
+	 * This method will honor the read/write/execute bits for the user mode and
+	 * ignore others TODO: don't know if this even makes sense
 	 *
 	 * @param inode
 	 *            inode of the object to check.
@@ -68,9 +70,64 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	 * @return an allowed subset of permissions from the given mask.
 	 * @throws IOException
 	 */
-	public int access(Inode arg0, int arg1) throws IOException {
-		// TODO Auto-generated method stub
-		return 0;
+	@Override
+	public int access(Inode inode, int mode) throws IOException {
+		log.info("access()");
+
+		if (inode == null) {
+			throw new IllegalArgumentException("null inode");
+		}
+
+		long inodeNumber = this.getInodeNumber(inode);
+		// Throws NoEntException if not resolved...
+		Path path = this.resolveInode(inodeNumber);
+
+		log.info("path:{}", path);
+
+		int returnMode = 0;
+		try {
+			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
+					.instanceIRODSFile(path.toString());
+
+			if (PermissionBitmaskUtils.isUserExecuteSet(mode)) {
+				log.debug("check user exec");
+				if (pathFile.canExecute()) {
+					log.debug("determine user can execute");
+					PermissionBitmaskUtils.turnOnUserExecute(returnMode);
+				}
+			}
+
+			boolean canWrite = false;
+			if (PermissionBitmaskUtils.isUserWriteSet(mode)) {
+				log.debug("checking user write");
+				canWrite = pathFile.canWrite();
+				if (canWrite) {
+					log.debug("determine user can write");
+					PermissionBitmaskUtils.turnOnUserWrite(returnMode);
+				}
+			}
+
+			if (PermissionBitmaskUtils.isUserReadSet(mode)) {
+				log.debug("check user read");
+				if (canWrite) {
+					log.debug("user already determined to have write");
+					PermissionBitmaskUtils.turnOnUserRead(returnMode);
+				} else if (pathFile.canRead()) {
+					log.debug("user can read");
+					PermissionBitmaskUtils.turnOnUserRead(returnMode);
+				}
+			}
+
+			log.debug("finished!");
+			return returnMode;
+
+		} catch (JargonException e) {
+			log.error("exception getting access for path:{}", path, e);
+			throw new IOException(e);
+		} finally {
+			irodsAccessObjectFactory.closeSessionAndEatExceptions();
+		}
+
 	}
 
 	@Override
@@ -332,7 +389,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 		try {
 			CollectionAndDataObjectListAndSearchAO listAO = this.irodsAccessObjectFactory
-					.getCollectionAndDataObjectListAndSearchAO(rootAccount);
+					.getCollectionAndDataObjectListAndSearchAO(resolveIrodsAccount());
 			ObjStat objStat = listAO.retrieveObjectStatForPath(irodsAbsPath);
 			log.debug("objStat:{}", objStat);
 
@@ -342,7 +399,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 			stat.setCTime(objStat.getCreatedAt().getTime());
 			stat.setMTime(objStat.getModifiedAt().getTime());
 
-			UserAO userAO = this.irodsAccessObjectFactory.getUserAO(rootAccount);
+			UserAO userAO = this.irodsAccessObjectFactory.getUserAO(resolveIrodsAccount());
 			StringBuilder sb = new StringBuilder();
 			sb.append(objStat.getOwnerName());
 			sb.append("#");
@@ -372,6 +429,16 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	private long getInodeNumber(Inode inode) {
 		return Longs.fromByteArray(inode.getFileId());
+	}
+
+	/**
+	 * Stand-in for a method to return the current user or proxy as a given
+	 * user...not sure yet how the principal is resolved
+	 * 
+	 * @return
+	 */
+	private IRODSAccount resolveIrodsAccount() {
+		return rootAccount;
 	}
 
 }
