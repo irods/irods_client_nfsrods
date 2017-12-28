@@ -2,6 +2,8 @@ package org.irods.jargon.nfs.vfs;
 
 import java.util.Properties;
 
+import org.dcache.nfs.vfs.Inode;
+import org.dcache.nfs.vfs.Stat;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
@@ -51,6 +53,18 @@ public class IrodsVirtualFileSystemTest {
 	}
 
 	@Test
+	public void testGetAttrRoot() throws Exception {
+		IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+		IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+		String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+		IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+		IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+		Inode rootNode = vfs.getRootInode();
+		Stat stat = vfs.getattr(rootNode);
+		Assert.assertNotNull("null stat", stat);
+	}
+
+	@Test
 	public void testIrodsVirtualFileSystem() throws Exception {
 		IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
 		IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
@@ -58,6 +72,8 @@ public class IrodsVirtualFileSystemTest {
 		IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
 		IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
 		Assert.assertNotNull("no vfs created", vfs);
+		Inode actual = vfs.getRootInode();
+		Assert.assertNotNull("no root inode", actual);
 
 	}
 
