@@ -9,6 +9,7 @@ import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.utils.MiscIRODSUtils;
+import org.irods.jargon.nfs.vfs.utils.PermissionBitmaskUtils;
 import org.irods.jargon.testutils.AssertionHelper;
 import org.irods.jargon.testutils.IRODSTestSetupUtilities;
 import org.irods.jargon.testutils.TestingPropertiesHelper;
@@ -53,6 +54,20 @@ public class IrodsVirtualFileSystemTest {
 	}
 
 	@Test
+	public void testCreateNewDFile() throws Exception {
+		IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+		IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+		String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+		IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+		IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+		Inode rootNode = vfs.getRootInode();
+		int readBitmask = 0 | PermissionBitmaskUtils.USER_READ;
+		int access = vfs.access(rootNode, readBitmask);
+		Assert.assertEquals("did not get expected user read acess", readBitmask, access);
+
+	}
+
+	@Test
 	public void testGetAttrRoot() throws Exception {
 		IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
 		IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
@@ -62,6 +77,34 @@ public class IrodsVirtualFileSystemTest {
 		Inode rootNode = vfs.getRootInode();
 		Stat stat = vfs.getattr(rootNode);
 		Assert.assertNotNull("null stat", stat);
+	}
+
+	@Test
+	public void testGetReadAttrAtRoot() throws Exception {
+		IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+		IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+		String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+		IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+		IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+		Inode rootNode = vfs.getRootInode();
+		int readBitmask = 0 | PermissionBitmaskUtils.USER_READ;
+		int access = vfs.access(rootNode, readBitmask);
+		Assert.assertEquals("did not get expected user read acess", readBitmask, access);
+
+	}
+
+	@Test
+	public void testGetReadWriteAttrAtRoot() throws Exception {
+		IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+		IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+		String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+		IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+		IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+		Inode rootNode = vfs.getRootInode();
+		int readBitmask = 0 | PermissionBitmaskUtils.USER_READ | PermissionBitmaskUtils.USER_WRITE;
+		int access = vfs.access(rootNode, readBitmask);
+		Assert.assertEquals("did not get expected user read/write acess", readBitmask, access);
+
 	}
 
 	@Test

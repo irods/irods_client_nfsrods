@@ -33,6 +33,7 @@ import org.irods.jargon.core.pub.UserAO;
 import org.irods.jargon.core.pub.domain.ObjStat;
 import org.irods.jargon.core.pub.domain.User;
 import org.irods.jargon.core.pub.io.IRODSFile;
+import org.irods.jargon.core.pub.io.IRODSFileFactory;
 import org.irods.jargon.nfs.vfs.utils.PermissionBitmaskUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,7 +94,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 				log.debug("check user exec");
 				if (pathFile.canExecute()) {
 					log.debug("determine user can execute");
-					PermissionBitmaskUtils.turnOnUserExecute(returnMode);
+					returnMode = PermissionBitmaskUtils.turnOnUserExecute(returnMode);
 				}
 			}
 
@@ -103,7 +104,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 				canWrite = pathFile.canWrite();
 				if (canWrite) {
 					log.debug("determine user can write");
-					PermissionBitmaskUtils.turnOnUserWrite(returnMode);
+					returnMode = PermissionBitmaskUtils.turnOnUserWrite(returnMode);
 				}
 			}
 
@@ -111,10 +112,10 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 				log.debug("check user read");
 				if (canWrite) {
 					log.debug("user already determined to have write");
-					PermissionBitmaskUtils.turnOnUserRead(returnMode);
+					returnMode = PermissionBitmaskUtils.turnOnUserRead(returnMode);
 				} else if (pathFile.canRead()) {
 					log.debug("user can read");
-					PermissionBitmaskUtils.turnOnUserRead(returnMode);
+					returnMode = PermissionBitmaskUtils.turnOnUserRead(returnMode);
 				}
 			}
 
@@ -130,16 +131,90 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	}
 
+	/**
+	 * Flush data in {@code dirty} state to the stable storage. Typically follows
+	 * {@link #write()} operation.
+	 *
+	 * @param inode
+	 *            inode of the file to commit.
+	 * @param offset
+	 *            the file position to start commit at.
+	 * @param count
+	 *            number of bytes to commit.
+	 * @throws IOException
+	 */
 	@Override
-	public void commit(Inode arg0, long arg1, int arg2) throws IOException {
-		// TODO Auto-generated method stub
+	public void commit(Inode inode, long offset, int count) throws IOException {
+		log.info("commit() is right now a noop, need to think about it");
 
 	}
 
+	/**
+	 * Create a new object in a given directory with a specific name.
+	 *
+	 * @param parent
+	 *            directory where new object must be created.
+	 * @param type
+	 *            the type of the object to be created.
+	 * @param name
+	 *            name of the object.
+	 * @param subject
+	 *            the owner subject of a newly created object.
+	 * @param mode
+	 *            initial permission mask.
+	 * @return the inode of the newly created object.
+	 * @throws IOException
+	 */
 	@Override
-	public Inode create(Inode arg0, Type arg1, String arg2, Subject arg3, int arg4) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public Inode create(Inode parent, Type type, String name, Subject subject, int mode) throws IOException {
+		log.info("create()");
+		if (parent == null) {
+			throw new IllegalArgumentException("null parent");
+		}
+
+		if (type == null) {
+			throw new IllegalArgumentException("null type");
+		}
+
+		if (name == null) {
+			throw new IllegalArgumentException("null name");
+		}
+
+		if (subject == null) {
+			throw new IllegalArgumentException("null subjet");
+		}
+
+		log.info("parent:{}", parent);
+		log.info("type:{}", type);
+		log.info("name:{}", name);
+		log.info("subject:{}", subject);
+		log.info("mode:{}", mode);
+
+		long parentInodeNumber = getInodeNumber(parent);
+		Path parentPath = resolveInode(parentInodeNumber);
+		Path newPath = parentPath.resolve(name);
+
+		try {
+			IRODSFileFactory irodsFileFactory = this.irodsAccessObjectFactory
+					.getIRODSFileFactory(this.resolveIrodsAccount());
+			IRODSFile newFile = irodsFileFactory.instanceIRODSFile(newPath.toString());
+			log.debug("creating new file at:{}", newFile);
+			newFile.createNewFile();
+			long newInodeNumber = fileId.getAndIncrement();
+			map(newInodeNumber, newPath);
+			setOwnershipAndMode(newPath, subject, mode);
+			return toFh(newInodeNumber);
+
+		} catch (JargonException e) {
+			log.error("error creating new file at path:{}", newPath, e);
+			throw new IOException("exception creating new file", e);
+		}
+
+	}
+
+	private void setOwnershipAndMode(Path newPath, Subject subject, int mode) {
+		log.info("setOwnershipAndMode()"); // TODO: right now a noop
+
 	}
 
 	@Override

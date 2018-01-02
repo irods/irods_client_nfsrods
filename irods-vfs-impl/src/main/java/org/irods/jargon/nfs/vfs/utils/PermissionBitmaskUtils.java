@@ -58,9 +58,10 @@ public class PermissionBitmaskUtils {
 	 * 
 	 * @param mode
 	 *            <code>int</code> bitmask that will have the desired mode turned on
+	 * @return <code>int</code> with updated bitmask
 	 */
-	public static void turnOnUserRead(int mode) {
-		mode |= USER_READ;
+	public static int turnOnUserRead(int mode) {
+		return mode | USER_READ;
 	}
 
 	/**
@@ -68,9 +69,11 @@ public class PermissionBitmaskUtils {
 	 * 
 	 * @param mode
 	 *            <code>int</code> bitmask that will have the desired mode turned on
+	 * @return <code>int</code> with updated bitmask
+	 * 
 	 */
-	public static void turnOnUserWrite(int mode) {
-		mode |= USER_WRITE;
+	public static int turnOnUserWrite(int mode) {
+		return mode |= USER_WRITE;
 	}
 
 	/**
@@ -78,9 +81,11 @@ public class PermissionBitmaskUtils {
 	 * 
 	 * @param mode
 	 *            <code>int</code> bitmask that will have the desired mode turned on
+	 * @return <code>int</code> with updated bitmask
+	 * 
 	 */
-	public static void turnOnUserExecute(int mode) {
-		mode |= USER_EXECUTE;
+	public static int turnOnUserExecute(int mode) {
+		return mode |= USER_EXECUTE;
 	}
 
 }
