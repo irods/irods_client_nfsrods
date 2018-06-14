@@ -4,6 +4,8 @@
 package org.irods.jargon.nfs.vfs;
 
 import java.io.IOException;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -219,20 +221,21 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	@Override
 	public nfsace4[] getAcl(Inode arg0) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		return new nfsace4[0]; // TODO: this is same in local need to look at what nfsace4 is composed of
 	}
 
 	@Override
 	public AclCheckable getAclCheckable() {
-		// TODO Auto-generated method stub
-		return null;
+		return AclCheckable.UNDEFINED_ALL;
 	}
 
 	@Override
 	public FsStat getFsStat() throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		log.info("getFsStat()");
+		FileStore store = Files.getFileStore(Paths.get(root.getAbsolutePath()));
+		long total = store.getTotalSpace();
+		long free = store.getUsableSpace();
+		return new FsStat(total, Long.MAX_VALUE, total - free, pathToInode.size());
 	}
 
 	@Override
