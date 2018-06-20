@@ -343,9 +343,28 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	@Override
 	public Inode mkdir(Inode arg0, String arg1, Subject arg2, int arg3) throws IOException {
-		// TODO Auto-generated method stub
-                System.out.println("mkdir: " + arg0.toString());
-		return null;
+                
+                try {
+                    long parentInodeNumber = getInodeNumber(arg0);
+                    Path parentPath = resolveInode(parentInodeNumber);
+                    //Path newPath = parentPath.resolve(arg1);
+                    String irodsParentPath = parentPath.toString();
+                    IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount()).instanceIRODSFile(irodsParentPath, arg1);
+                    //Files.createDirectory(newPath);
+                    pathFile.mkdir();
+                    long newInodeNumber = fileId.getAndIncrement();
+                    map(newInodeNumber, pathFile.getAbsolutePath());
+                    setOwnershipAndMode( Paths.get(irodsParentPath, arg1), arg2, arg3);
+                    return toFh(newInodeNumber);
+                    
+                } catch (JargonException e) {
+                    throw new IOException("path " + e);
+                } finally{
+                    
+                    //close irods connections
+                    irodsAccessObjectFactory.closeSessionAndEatExceptions();
+                    
+                }
 	}
 
 	@Override
