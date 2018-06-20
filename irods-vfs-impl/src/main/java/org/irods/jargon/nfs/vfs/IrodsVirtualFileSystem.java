@@ -4,10 +4,12 @@
 package org.irods.jargon.nfs.vfs;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -15,7 +17,11 @@ import javax.security.auth.Subject;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.cliffc.high_scale_lib.NonBlockingHashMapLong;
+import org.dcache.nfs.status.ExistException;
 import org.dcache.nfs.status.NoEntException;
+import org.dcache.nfs.status.NotSuppException;
+import org.dcache.nfs.status.PermException;
+import org.dcache.nfs.status.ServerFaultException;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.nfs.v4.SimpleIdMap;
 import org.dcache.nfs.v4.xdr.nfsace4;
@@ -41,13 +47,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.primitives.Longs;
-import java.nio.file.FileAlreadyExistsException;
-import java.util.ArrayList;
-import org.dcache.nfs.status.ExistException;
-import org.dcache.nfs.status.NotSuppException;
-import org.dcache.nfs.status.PermException;
-import org.dcache.nfs.status.ServerFaultException;
-
 
 /**
  * iRODS implmentation of the nfs4j virtual file system
@@ -56,8 +55,6 @@ import org.dcache.nfs.status.ServerFaultException;
  *
  */
 public class IrodsVirtualFileSystem implements VirtualFileSystem {
-    
-      
 
 	private static final Logger log = LoggerFactory.getLogger(IrodsVirtualFileSystem.class);
 
@@ -230,7 +227,8 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	@Override
 	public nfsace4[] getAcl(Inode arg0) throws IOException {
-            //info on nfsace4: https://www.ibm.com/support/knowledgecenter/en/ssw_aix_61/com.ibm.aix.osdevice/acl_type_nfs4.htm
+		// info on nfsace4:
+		// https://www.ibm.com/support/knowledgecenter/en/ssw_aix_61/com.ibm.aix.osdevice/acl_type_nfs4.htm
 		return new nfsace4[0]; // TODO: this is same in local need to look at what nfsace4 is composed of
 	}
 
@@ -286,54 +284,54 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	@Override
 	public Inode link(Inode arg0, Inode arg1, String arg2, Subject arg3) throws IOException {
-		 long parentInodeNumber = getInodeNumber(arg0);
-        Path parentPath = resolveInode(parentInodeNumber);
+		long parentInodeNumber = getInodeNumber(arg0);
+		Path parentPath = resolveInode(parentInodeNumber);
 
-        long existingInodeNumber = getInodeNumber(arg1);
-        Path existingPath = resolveInode(existingInodeNumber);
+		long existingInodeNumber = getInodeNumber(arg1);
+		Path existingPath = resolveInode(existingInodeNumber);
 
-        Path targetPath = parentPath.resolve(arg2);
+		Path targetPath = parentPath.resolve(arg2);
 
-        try {
-            Files.createLink(targetPath, existingPath);
-        } catch (UnsupportedOperationException e) {
-            throw new NotSuppException("Not supported", e);
-        } catch (FileAlreadyExistsException e) {
-            throw new ExistException("Path exists " + arg2, e);
-        } catch (SecurityException e) {
-            throw new PermException("Permission denied: " + e.getMessage(), e);
-        } catch (IOException e) {
-            throw new ServerFaultException("Failed to create: " + e.getMessage(), e);
-        }
+		try {
+			Files.createLink(targetPath, existingPath);
+		} catch (UnsupportedOperationException e) {
+			throw new NotSuppException("Not supported", e);
+		} catch (FileAlreadyExistsException e) {
+			throw new ExistException("Path exists " + arg2, e);
+		} catch (SecurityException e) {
+			throw new PermException("Permission denied: " + e.getMessage(), e);
+		} catch (IOException e) {
+			throw new ServerFaultException("Failed to create: " + e.getMessage(), e);
+		}
 
-        long newInodeNumber = fileId.getAndIncrement();
-        map(newInodeNumber, targetPath);
-        return toFh(newInodeNumber);
+		long newInodeNumber = fileId.getAndIncrement();
+		map(newInodeNumber, targetPath);
+		return toFh(newInodeNumber);
 	}
 
 	@Override
 	public List<DirectoryEntry> list(Inode arg0) throws IOException {
-            long inodeNumber = getInodeNumber(arg0);
-            Path path = resolveInode(inodeNumber);
-            final List<DirectoryEntry> list = new ArrayList<>();
-            Files.newDirectoryStream(path).forEach(p -> {
-                try {
-                    long cookie = resolvePath(p);
-                    list.add(new DirectoryEntry(p.getFileName().toString(), toFh(cookie), statPath(p, cookie)));
-                } catch (Exception e) {
-                    throw new IllegalStateException(e);
-                }
-            });
-            return list;
+		long inodeNumber = getInodeNumber(arg0);
+		Path path = resolveInode(inodeNumber);
+		final List<DirectoryEntry> list = new ArrayList<>();
+		Files.newDirectoryStream(path).forEach(p -> {
+			try {
+				long cookie = resolvePath(p);
+				list.add(new DirectoryEntry(p.getFileName().toString(), toFh(cookie), statPath(p, cookie)));
+			} catch (Exception e) {
+				throw new IllegalStateException(e);
+			}
+		});
+		return list;
 	}
-        
-        private long resolvePath(Path path) throws NoEntException {
-            Long inodeNumber = pathToInode.get(path);
-            if (inodeNumber == null) {
-                throw new NoEntException("path " + path);
-            }
-            return inodeNumber;
-        }
+
+	private long resolvePath(Path path) throws NoEntException {
+		Long inodeNumber = pathToInode.get(path);
+		if (inodeNumber == null) {
+			throw new NoEntException("path " + path);
+		}
+		return inodeNumber;
+	}
 
 	@Override
 	public Inode lookup(Inode arg0, String arg1) throws IOException {
@@ -342,22 +340,40 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	}
 
 	@Override
-	public Inode mkdir(Inode arg0, String arg1, Subject arg2, int arg3) throws IOException {
-		// TODO Auto-generated method stub
-                System.out.println("mkdir: " + arg0.toString());
-		return null;
+	public Inode mkdir(Inode inode, String path, Subject subject, int mode) throws IOException {
+		log.info("mkdir()");
+
+		try {
+			Path parentPath = this.resolveInode(getInodeNumber(inode));
+			String irodsParentPath = parentPath.toString();
+			log.debug("parent path:{}", irodsParentPath);
+			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
+					.instanceIRODSFile(irodsParentPath, path);
+			pathFile.mkdir();
+			long newInodeNumber = fileId.getAndIncrement();
+			map(newInodeNumber, pathFile.getAbsolutePath());
+			setOwnershipAndMode(Paths.get(irodsParentPath, path), subject, mode);
+			return toFh(newInodeNumber);
+
+		} catch (JargonException e) {
+			log.error("exception making directory", e);
+			throw new IOException("Error making directory in iRODS", e);
+		} finally {
+			irodsAccessObjectFactory.closeSessionAndEatExceptions();
+		}
+
 	}
 
 	@Override
 	public boolean move(Inode arg0, String arg1, Inode arg2, String arg3) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("move: " + arg0.toString());
+		System.out.println("move: " + arg0.toString());
 		return false;
 	}
 
 	@Override
 	public Inode parentOf(Inode arg0) throws IOException {
-                System.out.println("parentof: " + arg0.toString());
+		System.out.println("parentof: " + arg0.toString());
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -365,49 +381,49 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	@Override
 	public int read(Inode arg0, byte[] arg1, long arg2, int arg3) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("read: " + arg0.toString());
+		System.out.println("read: " + arg0.toString());
 		return 0;
 	}
 
 	@Override
 	public String readlink(Inode arg0) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("readlink: " + arg0.toString());
+		System.out.println("readlink: " + arg0.toString());
 		return null;
 	}
 
 	@Override
-    public void remove(Inode arg0, String arg1) throws IOException {
+	public void remove(Inode arg0, String arg1) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("remove: " + arg0.toString());
+		System.out.println("remove: " + arg0.toString());
 
 	}
 
 	@Override
 	public void setAcl(Inode arg0, nfsace4[] arg1) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("setacl: " + arg0.toString());
+		System.out.println("setacl: " + arg0.toString());
 
 	}
 
 	@Override
 	public void setattr(Inode arg0, Stat arg1) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("setattr: " + arg0.toString());
+		System.out.println("setattr: " + arg0.toString());
 
 	}
 
 	@Override
 	public Inode symlink(Inode arg0, String arg1, String arg2, Subject arg3, int arg4) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("symlink: " + arg0.toString());
+		System.out.println("symlink: " + arg0.toString());
 		return null;
 	}
 
 	@Override
 	public WriteResult write(Inode arg0, byte[] arg1, long arg2, int arg3, StabilityLevel arg4) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("write: " + arg0.toString());
+		System.out.println("write: " + arg0.toString());
 		return null;
 	}
 
