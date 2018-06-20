@@ -313,18 +313,18 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	@Override
 	public List<DirectoryEntry> list(Inode arg0) throws IOException {
-		long inodeNumber = getInodeNumber(arg0);
-        Path path = resolveInode(inodeNumber);
-        final List<DirectoryEntry> list = new ArrayList<>();
-        Files.newDirectoryStream(path).forEach(p -> {
-            try {
-                long cookie = resolvePath(p);
-                list.add(new DirectoryEntry(p.getFileName().toString(), toFh(cookie), statPath(p, cookie)));
-            } catch (Exception e) {
-                throw new IllegalStateException(e);
-            }
-        });
-        return list;
+            long inodeNumber = getInodeNumber(arg0);
+            Path path = resolveInode(inodeNumber);
+            final List<DirectoryEntry> list = new ArrayList<>();
+            Files.newDirectoryStream(path).forEach(p -> {
+                try {
+                    long cookie = resolvePath(p);
+                    list.add(new DirectoryEntry(p.getFileName().toString(), toFh(cookie), statPath(p, cookie)));
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+            return list;
 	}
         
         private long resolvePath(Path path) throws NoEntException {
