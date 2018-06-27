@@ -1,10 +1,12 @@
 package org.irods.jargon.nfs.vfs;
 
 import java.util.Properties;
+import javax.security.auth.Subject;
 import org.dcache.nfs.vfs.FsStat;
 
 import org.dcache.nfs.vfs.Inode;
 import org.dcache.nfs.vfs.Stat;
+import org.dcache.utils.UnixUtils;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
@@ -239,6 +241,36 @@ public class IrodsVirtualFileSystemTest {
         
         @Test
         public void testMkdir() throws Exception{
+            
+            //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create Test Dir string
+            String path = IRODS_TEST_SUBDIR_PATH;
+            
+            //get subject for mkdir()
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            //call mkdir()
+            vfs.mkdir(vfs.getRootInode(), path, currentUser, 0);
+            
+            //get irods directory as irods file
+            IRODSFile file = irodsFileSystem.getIRODSFileFactory(irodsAccount).instanceIRODSFile(path);
+            
+            try{ //try deleting dir
+                irodsFileSystem.getIRODSAccessObjectFactory().getIRODSFileSystemAO(irodsAccount).directoryDeleteForce(file);
+            }
+            catch (Exception e){//if it fails theres issues
+                System.out.println("Error Deleting Directory: " + e);
+            }
+            
+            
             
         }
         
