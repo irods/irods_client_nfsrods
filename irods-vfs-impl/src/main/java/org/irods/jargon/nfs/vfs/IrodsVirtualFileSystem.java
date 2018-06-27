@@ -4,10 +4,12 @@
 package org.irods.jargon.nfs.vfs;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -15,7 +17,11 @@ import javax.security.auth.Subject;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.cliffc.high_scale_lib.NonBlockingHashMapLong;
+import org.dcache.nfs.status.ExistException;
 import org.dcache.nfs.status.NoEntException;
+import org.dcache.nfs.status.NotSuppException;
+import org.dcache.nfs.status.PermException;
+import org.dcache.nfs.status.ServerFaultException;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.nfs.v4.SimpleIdMap;
 import org.dcache.nfs.v4.xdr.nfsace4;
@@ -41,13 +47,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.primitives.Longs;
-import java.nio.file.FileAlreadyExistsException;
-import java.util.ArrayList;
-import org.dcache.nfs.status.ExistException;
-import org.dcache.nfs.status.NotSuppException;
-import org.dcache.nfs.status.PermException;
-import org.dcache.nfs.status.ServerFaultException;
-
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.CopyOption;
+import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.StandardOpenOption;
+import org.dcache.nfs.status.NotEmptyException;
 
 /**
  * iRODS implmentation of the nfs4j virtual file system
@@ -56,8 +61,6 @@ import org.dcache.nfs.status.ServerFaultException;
  *
  */
 public class IrodsVirtualFileSystem implements VirtualFileSystem {
-    
-      
 
 	private static final Logger log = LoggerFactory.getLogger(IrodsVirtualFileSystem.class);
 
@@ -229,8 +232,9 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	}
 
 	@Override
-	public nfsace4[] getAcl(Inode arg0) throws IOException {
-            //info on nfsace4: https://www.ibm.com/support/knowledgecenter/en/ssw_aix_61/com.ibm.aix.osdevice/acl_type_nfs4.htm
+	public nfsace4[] getAcl(Inode inode) throws IOException {
+		// info on nfsace4:
+		// https://www.ibm.com/support/knowledgecenter/en/ssw_aix_61/com.ibm.aix.osdevice/acl_type_nfs4.htm
 		return new nfsace4[0]; // TODO: this is same in local need to look at what nfsace4 is composed of
 	}
 
@@ -279,154 +283,202 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	}
 
 	@Override
-	public boolean hasIOLayout(Inode arg0) throws IOException {
-		System.out.println("hasIOLayout: " + arg0.toString());
+	public boolean hasIOLayout(Inode inode) throws IOException {
+		System.out.println("hasIOLayout: " + inode.toString());
 		return false;
 	}
 
 	@Override
-	public Inode link(Inode arg0, Inode arg1, String arg2, Subject arg3) throws IOException {
-		 long parentInodeNumber = getInodeNumber(arg0);
-        Path parentPath = resolveInode(parentInodeNumber);
+	public Inode link(Inode parent, Inode existing, String target, Subject subject) throws IOException {
+		long parentInodeNumber = getInodeNumber(parent);
+		Path parentPath = resolveInode(parentInodeNumber);
 
-        long existingInodeNumber = getInodeNumber(arg1);
-        Path existingPath = resolveInode(existingInodeNumber);
+		long existingInodeNumber = getInodeNumber(existing);
+		Path existingPath = resolveInode(existingInodeNumber);
 
-        Path targetPath = parentPath.resolve(arg2);
+		Path targetPath = parentPath.resolve(target);
 
-        try {
-            Files.createLink(targetPath, existingPath);
-        } catch (UnsupportedOperationException e) {
-            throw new NotSuppException("Not supported", e);
-        } catch (FileAlreadyExistsException e) {
-            throw new ExistException("Path exists " + arg2, e);
-        } catch (SecurityException e) {
-            throw new PermException("Permission denied: " + e.getMessage(), e);
-        } catch (IOException e) {
-            throw new ServerFaultException("Failed to create: " + e.getMessage(), e);
-        }
+		try {
+			Files.createLink(targetPath, existingPath);
+		} catch (UnsupportedOperationException e) {
+			throw new NotSuppException("Not supported", e);
+		} catch (FileAlreadyExistsException e) {
+			throw new ExistException("Path exists " + target, e);
+		} catch (SecurityException e) {
+			throw new PermException("Permission denied: " + e.getMessage(), e);
+		} catch (IOException e) {
+			throw new ServerFaultException("Failed to create: " + e.getMessage(), e);
+		}
 
-        long newInodeNumber = fileId.getAndIncrement();
-        map(newInodeNumber, targetPath);
-        return toFh(newInodeNumber);
+		long newInodeNumber = fileId.getAndIncrement();
+		map(newInodeNumber, targetPath);
+		return toFh(newInodeNumber);
 	}
 
 	@Override
-	public List<DirectoryEntry> list(Inode arg0) throws IOException {
-            long inodeNumber = getInodeNumber(arg0);
-            Path path = resolveInode(inodeNumber);
-            final List<DirectoryEntry> list = new ArrayList<>();
-            Files.newDirectoryStream(path).forEach(p -> {
-                try {
-                    long cookie = resolvePath(p);
-                    list.add(new DirectoryEntry(p.getFileName().toString(), toFh(cookie), statPath(p, cookie)));
-                } catch (Exception e) {
-                    throw new IllegalStateException(e);
-                }
-            });
-            return list;
+	public List<DirectoryEntry> list(Inode inode) throws IOException {
+		long inodeNumber = getInodeNumber(inode);
+		Path path = resolveInode(inodeNumber);
+		final List<DirectoryEntry> list = new ArrayList<>();
+		Files.newDirectoryStream(path).forEach(p -> {
+			try {
+				long cookie = resolvePath(p);
+				list.add(new DirectoryEntry(p.getFileName().toString(), toFh(cookie), statPath(p, cookie)));
+			} catch (Exception e) {
+				throw new IllegalStateException(e);
+			}
+		});
+		return list;
 	}
-        
-        private long resolvePath(Path path) throws NoEntException {
-            Long inodeNumber = pathToInode.get(path);
-            if (inodeNumber == null) {
-                throw new NoEntException("path " + path);
-            }
-            return inodeNumber;
-        }
+
+	private long resolvePath(Path path) throws NoEntException {
+		Long inodeNumber = pathToInode.get(path);
+		if (inodeNumber == null) {
+			throw new NoEntException("path " + path);
+		}
+		return inodeNumber;
+	}
 
 	@Override
-	public Inode lookup(Inode arg0, String arg1) throws IOException {
-		System.out.println("lookup: " + arg0.toString());
+	public Inode lookup(Inode parent, String path) throws IOException {
+		System.out.println("lookup: " + parent.toString());
 		return null;
 	}
 
 	@Override
-	public Inode mkdir(Inode arg0, String arg1, Subject arg2, int arg3) throws IOException {
-                
-                try {
-                    long parentInodeNumber = getInodeNumber(arg0);
-                    Path parentPath = resolveInode(parentInodeNumber);
-                    //Path newPath = parentPath.resolve(arg1);
+	public Inode mkdir(Inode inode, String path, Subject subject, int mode) throws IOException {
+		log.info("mkdir()");
+
+		try {
+			Path parentPath = this.resolveInode(getInodeNumber(inode));
+			String irodsParentPath = parentPath.toString();
+			log.debug("parent path:{}", irodsParentPath);
+			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
+					.instanceIRODSFile(irodsParentPath, path);
+			pathFile.mkdir();
+			long newInodeNumber = fileId.getAndIncrement();
+			map(newInodeNumber, pathFile.getAbsolutePath());
+			setOwnershipAndMode(Paths.get(irodsParentPath, path), subject, mode);
+			return toFh(newInodeNumber);
+
+		} catch (JargonException e) {
+			log.error("exception making directory", e);
+			throw new IOException("Error making directory in iRODS", e);
+		} finally {
+			irodsAccessObjectFactory.closeSessionAndEatExceptions();
+		}
+	}
+
+	@Override
+	public boolean move(Inode inode, String oldName, Inode dest, String newName) throws IOException {
+                try{
+                    // get file path
+                    Path parentPath = this.resolveInode(getInodeNumber(inode));
+                    
+                    //get dest path
+                    Path destPath = this.resolveInode(getInodeNumber(dest));
+
+                    //handle Irods moving
                     String irodsParentPath = parentPath.toString();
-                    IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount()).instanceIRODSFile(irodsParentPath, arg1);
-                    //Files.createDirectory(newPath);
-                    pathFile.mkdir();
-                    long newInodeNumber = fileId.getAndIncrement();
-                    map(newInodeNumber, pathFile.getAbsolutePath());
-                    setOwnershipAndMode( Paths.get(irodsParentPath, arg1), arg2, arg3);
-                    return toFh(newInodeNumber);
+                    log.debug("parent path:{}", irodsParentPath);
+                    IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(irodsParentPath, oldName);
+                    this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount).physicalMove(pathFile, destPath.toString());
                     
-                } catch (JargonException e) {
-                    throw new IOException("path " + e);
-                } finally{
+                    //handle NFS Moving
+                    Files.move(parentPath, destPath);
                     
-                    //close irods connections
-                    irodsAccessObjectFactory.closeSessionAndEatExceptions();
                     
+                    System.out.println("move: " + dest.toString());
+                    return true;
+                }
+                catch (JargonException e) {
+                log.error("exception making directory", e);
+			throw new IOException("Error making directory in iRODS", e);
+		} finally {
+			irodsAccessObjectFactory.closeSessionAndEatExceptions();
+		}
+	}
+
+	@Override
+	public Inode parentOf(Inode inode) throws IOException {
+		System.out.println("parentof: " + inode.toString());
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override// TODO Auto-generated method stub
+	public int read(Inode inode, byte[] data, long offset, int count) throws IOException {
+		long inodeNumber = getInodeNumber(inode);
+                Path path = resolveInode(inodeNumber);
+                ByteBuffer destBuffer = ByteBuffer.wrap(data, 0, count);
+                try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+                    return channel.read(destBuffer, offset);
                 }
 	}
 
 	@Override
-	public boolean move(Inode arg0, String arg1, Inode arg2, String arg3) throws IOException {
+	public String readlink(Inode inode) throws IOException {// TODO Auto-generated method stub
+                //recursion woo, no idea what to do with this one. 
+                readlink(inode);
 		// TODO Auto-generated method stub
-                System.out.println("move: " + arg0.toString());
-		return false;
-	}
-
-	@Override
-	public Inode parentOf(Inode arg0) throws IOException {
-                System.out.println("parentof: " + arg0.toString());
-		// TODO Auto-generated method stub
+                
+                
+		System.out.println("readlink: " + inode.toString());
 		return null;
 	}
 
 	@Override
-	public int read(Inode arg0, byte[] arg1, long arg2, int arg3) throws IOException {
-		// TODO Auto-generated method stub
-                System.out.println("read: " + arg0.toString());
-		return 0;
+	public void remove(Inode parent, String path) throws IOException {
+                try {
+			Path parentPath = this.resolveInode(getInodeNumber(parent));
+			String irodsParentPath = parentPath.toString();
+			log.debug("parent path:{}", irodsParentPath);
+                        log.debug("parent path:{}", irodsParentPath);
+
+			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
+					.instanceIRODSFile(irodsParentPath, path);
+                        //delete item
+			pathFile.delete();
+			Files.delete(parentPath);
+                        unmap(resolvePath(parentPath), parentPath);
+
+		} catch (JargonException e) {
+			log.error("exception making directory", e);
+			throw new IOException("Error making directory in iRODS", e);
+		} catch (DirectoryNotEmptyException e) {
+                        throw new NotEmptyException("dir " + e + " is note empty");
+                }
+                finally {
+			irodsAccessObjectFactory.closeSessionAndEatExceptions();
+		}
+
 	}
 
 	@Override
-	public String readlink(Inode arg0) throws IOException {
+	public void setAcl(Inode inode, nfsace4[] acl) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("readlink: " + arg0.toString());
+		System.out.println("setacl: " + inode.toString());
+
+	}
+
+	@Override
+	public void setattr(Inode inode, Stat stat) throws IOException {
+		// TODO Auto-generated method stub
+		System.out.println("setattr: " + inode.toString());
+
+	}
+
+	@Override
+	public Inode symlink(Inode parent, String linkName, String targetName, Subject subject, int mode) throws IOException {
+		// TODO Auto-generated method stub
+		System.out.println("symlink: " + parent.toString());
 		return null;
 	}
 
 	@Override
-    public void remove(Inode arg0, String arg1) throws IOException {
+	public WriteResult write(Inode inode, byte[] data, long offset, int count, StabilityLevel stabilityLevel) throws IOException {
 		// TODO Auto-generated method stub
-                System.out.println("remove: " + arg0.toString());
-
-	}
-
-	@Override
-	public void setAcl(Inode arg0, nfsace4[] arg1) throws IOException {
-		// TODO Auto-generated method stub
-                System.out.println("setacl: " + arg0.toString());
-
-	}
-
-	@Override
-	public void setattr(Inode arg0, Stat arg1) throws IOException {
-		// TODO Auto-generated method stub
-                System.out.println("setattr: " + arg0.toString());
-
-	}
-
-	@Override
-	public Inode symlink(Inode arg0, String arg1, String arg2, Subject arg3, int arg4) throws IOException {
-		// TODO Auto-generated method stub
-                System.out.println("symlink: " + arg0.toString());
-		return null;
-	}
-
-	@Override
-	public WriteResult write(Inode arg0, byte[] arg1, long arg2, int arg3, StabilityLevel arg4) throws IOException {
-		// TODO Auto-generated method stub
-                System.out.println("write: " + arg0.toString());
+		System.out.println("write: " + inode.toString());
 		return null;
 	}
 
@@ -596,5 +648,21 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	private IRODSAccount resolveIrodsAccount() {
 		return rootAccount;
 	}
+        
+        private void unmap(long inodeNumber, Path path) {
+            Path removedPath = inodeToPath.remove(inodeNumber);
+            if (!path.equals(removedPath)) {
+                throw new IllegalStateException();
+            }
+            if (pathToInode.remove(path) != inodeNumber) {
+                throw new IllegalStateException();
+            }
+        }
+
+    private void remap(long inodeNumber, Path oldPath, Path newPath) {
+        //TODO - attempt rollback?
+        unmap(inodeNumber, oldPath);
+        map(inodeNumber, newPath);
+    }
 
 }
