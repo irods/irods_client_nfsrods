@@ -1,5 +1,7 @@
 package org.irods.jargon.nfs.vfs;
 
+import java.io.FilenameFilter;
+import java.util.Arrays;
 import java.util.Properties;
 import javax.security.auth.Subject;
 import org.dcache.nfs.vfs.FsStat;
@@ -10,6 +12,7 @@ import org.dcache.utils.UnixUtils;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
+import org.irods.jargon.core.pub.TrashOperationsAO;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.utils.MiscIRODSUtils;
 import org.irods.jargon.nfs.vfs.utils.PermissionBitmaskUtils;
@@ -264,11 +267,7 @@ public class IrodsVirtualFileSystemTest {
             IRODSFile file = irodsFileSystem.getIRODSFileFactory(irodsAccount).instanceIRODSFile(path);
             
             //try deleting dir
-            irodsFileSystem.getIRODSAccessObjectFactory().getIRODSFileSystemAO(irodsAccount).directoryDeleteForce(file);
-
-            
-            
-            
+            irodsFileSystem.getIRODSAccessObjectFactory().getIRODSFileSystemAO(irodsAccount).directoryDeleteForce(file);  
             
         }
         
@@ -292,8 +291,9 @@ public class IrodsVirtualFileSystemTest {
             
         }
         
+        /*
         @Test
-        public void testRemoveEmptyDirectory() throws Exception{
+        public void testForceRemoveEmptyDirectory() throws Exception{
             //get irods acct stuff ready
             IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
             IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
@@ -304,7 +304,7 @@ public class IrodsVirtualFileSystemTest {
             IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
             
             //create Test Dir string
-            String path = "testRemove";
+            String path = "testRemoveEmptyDirectory";
             
             //get subject for mkdir()
             Subject currentUser = UnixUtils.getCurrentUser();
@@ -318,10 +318,108 @@ public class IrodsVirtualFileSystemTest {
             //remove
             vfs.remove(root, path);
             
+            
+            //confirm its in trash
+            
+            //check if file is in trash directory
+            TrashOperationsAO trashOperationsAO = irodsFileSystem.getIRODSAccessObjectFactory()
+				.getTrashOperationsAO(irodsAccount);
+            IRODSFile file = trashOperationsAO.getTrashHomeForLoggedInUser();
+            
+            //get list of trash files TODO: Add filte rfor list 
+            String[] files = file.list();
+            if(Arrays.asList(files).contains(path)){
+                Assert.fail("Did not delete data object from trash");
+            }
+            
+            
         }
+        */
         
         @Test
+        public void testRemoveEmptyDirectory() throws Exception{
+            //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create Test Dir string
+            String path = "testRemoveEmptyDirectory";
+            
+            //get subject for mkdir()
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            //get root inode
+            Inode root = vfs.getRootInode();
+            
+            //call mkdir()
+            vfs.mkdir(root, path, currentUser, 0);
+            
+            //remove
+            vfs.remove(root, path);
+            
+            
+            /*Confirm its in Trash */
+            
+            //check if file is in trash directory
+            TrashOperationsAO trashOperationsAO = irodsFileSystem.getIRODSAccessObjectFactory()
+				.getTrashOperationsAO(irodsAccount);
+            IRODSFile file = trashOperationsAO.getTrashHomeForLoggedInUser();
+            
+            //get list of trash files TODO: Add filter for list 
+            String[] files = file.list();
+            if(!Arrays.asList(files).contains(path)){
+                Assert.fail("deleted data object from trash");
+            }
+            
+            
+        }
+        
+        
+        /*Create Force Remove*/
+        @Test
         public void testRemoveNotEmptyDirectory() throws Exception{
+             //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create Test Dir string
+            String path = "testRemoveNotEmptyDirectory";
+            String subPath = path+"/dir";
+            
+            //get subject for mkdir()
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            //get root inode
+            Inode root = vfs.getRootInode();
+            
+            //create directory
+            vfs.mkdir(root, path, currentUser, 0);
+            
+            //create sub directory
+            vfs.mkdir(root, subPath, currentUser, 0);
+            
+            //remove
+            vfs.remove(root, path);
+            
+            //check if file is in trash directory
+            TrashOperationsAO trashOperationsAO = irodsFileSystem.getIRODSAccessObjectFactory()
+				.getTrashOperationsAO(irodsAccount);
+            IRODSFile file = trashOperationsAO.getTrashHomeForLoggedInUser();
+            String[] files = file.list();
+            if(!Arrays.asList(files).contains(path)){
+                Assert.fail("Deleted data object from trash");
+            }
+            
             
         }
         

@@ -52,7 +52,10 @@ import java.nio.channels.FileChannel;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import org.dcache.nfs.status.NotEmptyException;
+import org.irods.jargon.core.pub.IRODSFileSystem;
+import org.irods.jargon.core.pub.TrashOperationsAO;
 
 /**
  * iRODS implmentation of the nfs4j virtual file system
@@ -382,10 +385,17 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
                     String irodsParentPath = parentPath.toString();
                     log.debug("parent path:{}", irodsParentPath);
                     IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(irodsParentPath, oldName);
+                    
+                    //rename file
+                    if(!oldName.equals(newName)){
+                        //pathFile.
+                    }
+                    
+                    //move filerootAccount
                     this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount).physicalMove(pathFile, destPath.toString());
                     
                     //handle NFS Moving
-                    Files.move(parentPath, destPath);
+                    //Files.move(parentPath, destPath);
                     
                     
                     System.out.println("move: " + dest.toString());
@@ -438,8 +448,11 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
 					.instanceIRODSFile(irodsParentPath, path);
                         //delete item
-                        //Files.delete(parentPath);
 			pathFile.delete();
+                        
+                        //delete item from trash
+                        //pathFile.deleteWithForceOption();
+
                         unmap(resolvePath(parentPath), parentPath);
 
 		} catch (JargonException e) {
