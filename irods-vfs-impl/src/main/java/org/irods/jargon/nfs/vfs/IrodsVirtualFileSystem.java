@@ -438,8 +438,8 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
 					.instanceIRODSFile(irodsParentPath, path);
                         //delete item
+                        Files.delete(parentPath);
 			pathFile.delete();
-			Files.delete(parentPath);
                         unmap(resolvePath(parentPath), parentPath);
 
 		} catch (JargonException e) {

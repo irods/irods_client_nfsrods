@@ -252,7 +252,7 @@ public class IrodsVirtualFileSystemTest {
             IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
             
             //create Test Dir string
-            String path = IRODS_TEST_SUBDIR_PATH;
+            String path = "testMkdir";
             
             //get subject for mkdir()
             Subject currentUser = UnixUtils.getCurrentUser();
@@ -263,12 +263,10 @@ public class IrodsVirtualFileSystemTest {
             //get irods directory as irods file
             IRODSFile file = irodsFileSystem.getIRODSFileFactory(irodsAccount).instanceIRODSFile(path);
             
-            try{ //try deleting dir
-                irodsFileSystem.getIRODSAccessObjectFactory().getIRODSFileSystemAO(irodsAccount).directoryDeleteForce(file);
-            }
-            catch (Exception e){//if it fails theres issues
-                System.out.println("Error Deleting Directory: " + e);
-            }
+            //try deleting dir
+            irodsFileSystem.getIRODSAccessObjectFactory().getIRODSFileSystemAO(irodsAccount).directoryDeleteForce(file);
+
+            
             
             
             
@@ -296,6 +294,29 @@ public class IrodsVirtualFileSystemTest {
         
         @Test
         public void testRemove() throws Exception{
+            //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create Test Dir string
+            String path = IRODS_TEST_SUBDIR_PATH;
+            
+            //get subject for mkdir()
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            //get root inode
+            Inode root = vfs.getRootInode();
+            
+            //call mkdir()
+            vfs.mkdir(root, path, currentUser, 0);
+            
+            //remove
+            vfs.remove(root, path);
             
         }
         
