@@ -438,16 +438,14 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
 					.instanceIRODSFile(irodsParentPath, path);
                         //delete item
-                        Files.delete(parentPath);
+                        //Files.delete(parentPath);
 			pathFile.delete();
                         unmap(resolvePath(parentPath), parentPath);
 
 		} catch (JargonException e) {
 			log.error("exception making directory", e);
 			throw new IOException("Error making directory in iRODS", e);
-		} catch (DirectoryNotEmptyException e) {
-                        throw new NotEmptyException("dir " + e + " is note empty");
-                }
+		}
                 finally {
 			irodsAccessObjectFactory.closeSessionAndEatExceptions();
 		}

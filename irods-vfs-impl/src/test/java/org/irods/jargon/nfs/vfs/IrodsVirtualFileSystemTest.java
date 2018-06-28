@@ -293,7 +293,7 @@ public class IrodsVirtualFileSystemTest {
         }
         
         @Test
-        public void testRemove() throws Exception{
+        public void testRemoveEmptyDirectory() throws Exception{
             //get irods acct stuff ready
             IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
             IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
@@ -304,7 +304,7 @@ public class IrodsVirtualFileSystemTest {
             IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
             
             //create Test Dir string
-            String path = IRODS_TEST_SUBDIR_PATH;
+            String path = "testRemove";
             
             //get subject for mkdir()
             Subject currentUser = UnixUtils.getCurrentUser();
@@ -317,6 +317,11 @@ public class IrodsVirtualFileSystemTest {
             
             //remove
             vfs.remove(root, path);
+            
+        }
+        
+        @Test
+        public void testRemoveNotEmptyDirectory() throws Exception{
             
         }
         
