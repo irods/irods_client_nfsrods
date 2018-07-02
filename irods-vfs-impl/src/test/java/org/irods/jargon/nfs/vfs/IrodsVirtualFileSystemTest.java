@@ -288,8 +288,7 @@ public class IrodsVirtualFileSystemTest {
             String dir1 = "testMoveDir1";
             String dir2 = "testMoveDir2";
             
-            String dirFile = "testMoveFile";
-            //String dirFileRename = "testMoveFileRenamed";
+            String dirFile = "testDir";
             
             //get subject for mkdir()
             Subject currentUser = UnixUtils.getCurrentUser();
@@ -310,30 +309,8 @@ public class IrodsVirtualFileSystemTest {
             vfs.remove(root, dir2);
             
         }
-        
-        
+
         @Test
-        public void testRead() throws Exception{
-            //get irods acct stuff ready
-            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
-            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
-            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
-            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
-            
-            //create VFS
-            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
-            
-            //create folders and file for testing
-            String dir1 = "testMoveDir1";
-            String dir2 = "testMoveDir2";
-            
-            //remove folders and files from testing
-            Inode root = vfs.getRootInode();
-            vfs.remove(root, dir1);
-            vfs.remove(root, dir2);
-        }
-        
-         @Test
         public void testMoveDirWithRename() throws Exception{
             
             //get irods acct stuff ready
@@ -349,8 +326,8 @@ public class IrodsVirtualFileSystemTest {
             String dir1 = "testMoveDir1";
             String dir2 = "testMoveDir2";
             
-            String dirFile = "testMoveFile";
-            String dirFileRename = "testMoveFileRenamed";
+            String dirFile = "testDir";
+            String dirFileRename = "testDirRenamed";
             
             //get subject for mkdir()
             Subject currentUser = UnixUtils.getCurrentUser();
@@ -372,7 +349,47 @@ public class IrodsVirtualFileSystemTest {
             
         }
         
-      
+        @Test
+        public void testMoveFileWithoutRename() throws Exception{
+            
+            //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create folders and file for testing
+            String dir1 = "testFileMoveDir1";
+            String dir2 = "testFileMoveDir2";
+            
+            String dirFile = "testMoveFile";
+            
+            
+            //get subject for mkdir()
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            //create folders and file for testing
+            Inode testDir1 = vfs.mkdir(vfs.getRootInode(), dir1, currentUser, 0);
+            Inode dest = vfs.mkdir(vfs.getRootInode(), dir2, currentUser, 0);
+            Inode file1 = vfs.mkdir(testDir1, dirFile, currentUser, 0);
+            
+            //move file
+            vfs.move(file1, dirFile, dest, null);
+            
+            //remove folders and files from testing
+            Inode root = vfs.getRootInode();
+            vfs.remove(root, dir1);
+            vfs.remove(root, dir2);
+            
+        }
+        
+        @Test
+        public void testRead() throws Exception{
+            
+        }
         
         @Test
         public void testReadlink() throws Exception{

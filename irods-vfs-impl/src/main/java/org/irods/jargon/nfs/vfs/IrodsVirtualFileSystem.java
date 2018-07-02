@@ -376,44 +376,44 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	@Override
 	public boolean move(Inode inode, String oldName, Inode dest, String newName) throws IOException {
                 try{
+                    
                     // get file path
                     Path parentPath = this.resolveInode(getInodeNumber(inode));
                     
                     //get dest path
                     Path destPath = this.resolveInode(getInodeNumber(dest));
 
-                    //handle Irods moving
+                    //create IRODSFile for file to move
                     String irodsParentPath = parentPath.toString();
                     log.debug("parent path:{}", irodsParentPath);
                     IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(irodsParentPath);
                     
-                    //rename and move file
-                    if( newName != null && !oldName.equals(newName)){  
-                        //create path
-                        String destPathString = destPath.toString() + "/"+ newName;
+                    //create empty destination file object
+                    String destPathString = "";
+                    
+                    //make path string for destination based on if rename occurs
+                    if( newName != null && !oldName.equals(newName))
+                        destPathString = destPath.toString() + "/"+ newName;
+                    else
+                        destPathString = destPath.toString() + "/"+ oldName;
                         
-                        //create renamed irods file 
-                        IRODSFile irodsRenameFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPathString);
-                        IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
-                        //rename and move file
-                        fileSystemAO.renameDirectory(pathFile, irodsRenameFile); 
+                    //create irods destination file object 
+                    IRODSFile destFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPathString);
+                    
+                    //get file system controls
+                    IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
+                    
+                    //check if file or directory and run appropriate commands
+                    if(pathFile.isFile()){
+                        fileSystemAO.renameFile(pathFile, destFile); 
                     }
                     else{
-                        //create path
-                        String destPathString = destPath.toString() + "/"+oldName;
-                        
-                        //create irods file
-                        IRODSFile irodsMoveFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPathString);
-                        IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
-                        //move file
-                        fileSystemAO.renameDirectory(pathFile, irodsMoveFile); 
+                      fileSystemAO.renameDirectory(pathFile, destFile);   
                     }
                     
-                    //handle NFS Moving
-                    //Files.move(parentPath, destPath);
+                    //TODO: Is remap needed when moving files iRODS side, or will list be regened via list() call?
+                    //remap(getInodeNumber(inode), parentPath, destPath);
                     
-                    
-                    System.out.println("move: " + dest.toString());
                     return true;
                 }
                 catch (JargonException e) {
