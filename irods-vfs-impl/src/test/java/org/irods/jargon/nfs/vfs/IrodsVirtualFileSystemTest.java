@@ -12,6 +12,7 @@ import org.dcache.utils.UnixUtils;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
+import org.irods.jargon.core.pub.IRODSFileSystemAO;
 import org.irods.jargon.core.pub.TrashOperationsAO;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.utils.MiscIRODSUtils;
@@ -274,10 +275,35 @@ public class IrodsVirtualFileSystemTest {
         @Test
         public void testMove() throws Exception{
             
-        }
-        
-        @Test
-        public void testParentOf() throws Exception{
+            //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create folders and file for testing
+            String dir1 = "testMoveDir1";
+            String dir2 = "testMoveDir2";
+            String dirFile = "testMoveFile.txt";
+            String dirFileRename = "testMoveFileRenamed.txt";
+            
+            //get subject for mkdir()
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            //create folders and file for testing
+            Inode testDir1 = vfs.mkdir(vfs.getRootInode(), dir1, currentUser, 0);
+            Inode dest = vfs.mkdir(vfs.getRootInode(), dir2, currentUser, 0);
+            Inode file1 = vfs.mkdir(testDir1, dirFile, currentUser, 0);
+            
+            //move file
+            vfs.move(file1, null, dest, null);
+            
+            //remove folders and files from testing
+            vfs.remove(vfs.getRootInode(), dir1);
+            vfs.remove(vfs.getRootInode(), dir2);
             
         }
         

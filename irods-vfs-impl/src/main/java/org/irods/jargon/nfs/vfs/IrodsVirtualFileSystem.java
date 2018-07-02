@@ -55,6 +55,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import org.dcache.nfs.status.NotEmptyException;
 import org.irods.jargon.core.pub.IRODSFileSystem;
+import org.irods.jargon.core.pub.IRODSFileSystemAO;
 import org.irods.jargon.core.pub.TrashOperationsAO;
 
 /**
@@ -386,13 +387,17 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
                     log.debug("parent path:{}", irodsParentPath);
                     IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(irodsParentPath, oldName);
                     
-                    //rename file
-                    if(!oldName.equals(newName)){
-                        //pathFile.
+                    //rename and move file
+                    if(!oldName.equals(newName) && newName!= null){    
+                        IRODSFile irodsRenameFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPath.toString(), newName);
+                        IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
+                        fileSystemAO.renameFile(pathFile, irodsRenameFile); 
+                        //fileSystemAO.
                     }
-                    
-                    //move filerootAccount
-                    this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount).physicalMove(pathFile, destPath.toString());
+                    else{
+                        //move file
+                        this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount).physicalMove(pathFile, destPath.toString());
+                    }
                     
                     //handle NFS Moving
                     //Files.move(parentPath, destPath);
