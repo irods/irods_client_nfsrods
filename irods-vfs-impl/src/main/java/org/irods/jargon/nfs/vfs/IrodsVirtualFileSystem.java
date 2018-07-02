@@ -388,19 +388,25 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
                     IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(irodsParentPath);
                     
                     //rename and move file
-                    if( newName != null && !oldName.equals(newName)){    
-                        IRODSFile irodsRenameFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPath.toString());
+                    if( newName != null && !oldName.equals(newName)){  
+                        //create path
+                        String destPathString = destPath.toString() + "/"+ newName;
+                        
+                        //create renamed irods file 
+                        IRODSFile irodsRenameFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPathString);
                         IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
-//                        fileSystemAO.renameFile(pathFile, irodsRenameFile); 
+                        //rename and move file
+                        fileSystemAO.renameDirectory(pathFile, irodsRenameFile); 
                     }
                     else{
+                        //create path
                         String destPathString = destPath.toString() + "/"+oldName;
+                        
+                        //create irods file
                         IRODSFile irodsMoveFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPathString);
                         IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
-                        fileSystemAO.renameDirectory(pathFile, irodsMoveFile); 
-                        
                         //move file
-                        //this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount).physicalMove(pathFile, destPathString);
+                        fileSystemAO.renameDirectory(pathFile, irodsMoveFile); 
                     }
                     
                     //handle NFS Moving
@@ -460,9 +466,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
                         //delete item
 			pathFile.delete();
                         
-                        //delete item from trash
-                        //pathFile.deleteWithForceOption();
-                        String nodePath = irodsParentPath + "/" + path;
+                        //unmap item 
                         unmap(resolvePath(objectPath), objectPath);
                        
 
