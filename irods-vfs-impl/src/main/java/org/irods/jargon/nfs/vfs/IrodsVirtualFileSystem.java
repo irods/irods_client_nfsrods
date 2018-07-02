@@ -385,18 +385,22 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
                     //handle Irods moving
                     String irodsParentPath = parentPath.toString();
                     log.debug("parent path:{}", irodsParentPath);
-                    IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(irodsParentPath, oldName);
+                    IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(irodsParentPath);
                     
                     //rename and move file
-                    if(!oldName.equals(newName) && newName!= null){    
-                        IRODSFile irodsRenameFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPath.toString(), newName);
+                    if( newName != null && !oldName.equals(newName)){    
+                        IRODSFile irodsRenameFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPath.toString());
                         IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
-                        fileSystemAO.renameFile(pathFile, irodsRenameFile); 
-                        //fileSystemAO.
+//                        fileSystemAO.renameFile(pathFile, irodsRenameFile); 
                     }
                     else{
+                        String destPathString = destPath.toString() + "/"+oldName;
+                        IRODSFile irodsMoveFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPathString);
+                        IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
+                        fileSystemAO.renameDirectory(pathFile, irodsMoveFile); 
+                        
                         //move file
-                        this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount).physicalMove(pathFile, destPath.toString());
+                        //this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount).physicalMove(pathFile, destPathString);
                     }
                     
                     //handle NFS Moving
@@ -446,6 +450,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	public void remove(Inode parent, String path) throws IOException {
                 try {
 			Path parentPath = this.resolveInode(getInodeNumber(parent));
+                        Path objectPath = parentPath.resolve(path);
 			String irodsParentPath = parentPath.toString();
 			log.debug("parent path:{}", irodsParentPath);
                         log.debug("parent path:{}", irodsParentPath);
@@ -457,8 +462,9 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
                         
                         //delete item from trash
                         //pathFile.deleteWithForceOption();
-
-                        unmap(resolvePath(parentPath), parentPath);
+                        String nodePath = irodsParentPath + "/" + path;
+                        unmap(resolvePath(objectPath), objectPath);
+                       
 
 		} catch (JargonException e) {
 			log.error("exception making directory", e);
