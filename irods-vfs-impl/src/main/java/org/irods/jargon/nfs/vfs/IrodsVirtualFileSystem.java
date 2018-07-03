@@ -375,49 +375,50 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	@Override
 	public boolean move(Inode inode, String oldName, Inode dest, String newName) throws IOException {
-                try{
-                    
-                    // get file path
-                    Path parentPath = this.resolveInode(getInodeNumber(inode));
-                    
-                    //get dest path
-                    Path destPath = this.resolveInode(getInodeNumber(dest));
+		try {
 
-                    //create IRODSFile for file to move
-                    String irodsParentPath = parentPath.toString();
-                    log.debug("parent path:{}", irodsParentPath);
-                    IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(irodsParentPath);
-                    
-                    //create empty destination file object
-                    String destPathString = "";
-                    
-                    //make path string for destination based on if rename occurs
-                    if( newName != null && !oldName.equals(newName))
-                        destPathString = destPath.toString() + "/"+ newName;
-                    else
-                        destPathString = destPath.toString() + "/"+ oldName;
-                        
-                    //create irods destination file object 
-                    IRODSFile destFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount()).instanceIRODSFile(destPathString);
-                    
-                    //get file system controls
-                    IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
-                    
-                    //check if file or directory and run appropriate commands
-                    if(pathFile.isFile()){
-                        fileSystemAO.renameFile(pathFile, destFile); 
-                    }
-                    else{
-                      fileSystemAO.renameDirectory(pathFile, destFile);   
-                    }
-                    
-                    //TODO: Is remap needed when moving files iRODS side, or will list be regened via list() call?
-                    //remap(getInodeNumber(inode), parentPath, destPath);
-                    
-                    return true;
-                }
-                catch (JargonException e) {
-                log.error("exception making directory", e);
+			// get file path
+			Path parentPath = this.resolveInode(getInodeNumber(inode));
+
+			// get dest path
+			Path destPath = this.resolveInode(getInodeNumber(dest));
+
+			// create IRODSFile for file to move
+			String irodsParentPath = parentPath.toString();
+			log.debug("parent path:{}", irodsParentPath);
+			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
+					.instanceIRODSFile(irodsParentPath);
+
+			// create empty destination file object
+			String destPathString = "";
+
+			// make path string for destination based on if rename occurs
+			if (newName != null && !oldName.equals(newName))
+				destPathString = destPath.toString() + "/" + newName;
+			else
+				destPathString = destPath.toString() + "/" + oldName;
+
+			// create irods destination file object
+			IRODSFile destFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
+					.instanceIRODSFile(destPathString);
+
+			// get file system controls
+			IRODSFileSystemAO fileSystemAO = this.irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
+
+			// check if file or directory and run appropriate commands
+			if (pathFile.isFile()) {
+				fileSystemAO.renameFile(pathFile, destFile);
+			} else {
+				fileSystemAO.renameDirectory(pathFile, destFile);
+			}
+
+			// TODO: Is remap needed when moving files iRODS side, or will list be regened
+			// via list() call?
+			// remap(getInodeNumber(inode), parentPath, destPath);
+
+			return true;
+		} catch (JargonException e) {
+			log.error("exception making directory", e);
 			throw new IOException("Error making directory in iRODS", e);
 		} finally {
 			irodsAccessObjectFactory.closeSessionAndEatExceptions();
@@ -431,50 +432,47 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 		return null;
 	}
 
-	@Override// TODO Auto-generated method stub
+	@Override // TODO Auto-generated method stub
 	public int read(Inode inode, byte[] data, long offset, int count) throws IOException {
 		long inodeNumber = getInodeNumber(inode);
-                Path path = resolveInode(inodeNumber);
-                ByteBuffer destBuffer = ByteBuffer.wrap(data, 0, count);
-                try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
-                    return channel.read(destBuffer, offset);
-                }
+		Path path = resolveInode(inodeNumber);
+		ByteBuffer destBuffer = ByteBuffer.wrap(data, 0, count);
+		try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+			return channel.read(destBuffer, offset);
+		}
 	}
 
 	@Override
 	public String readlink(Inode inode) throws IOException {// TODO Auto-generated method stub
-                //recursion woo, no idea what to do with this one. 
-                readlink(inode);
+		// recursion woo, no idea what to do with this one.
+		readlink(inode);
 		// TODO Auto-generated method stub
-                
-                
+
 		System.out.println("readlink: " + inode.toString());
 		return null;
 	}
 
 	@Override
 	public void remove(Inode parent, String path) throws IOException {
-                try {
+		try {
 			Path parentPath = this.resolveInode(getInodeNumber(parent));
-                        Path objectPath = parentPath.resolve(path);
+			Path objectPath = parentPath.resolve(path);
 			String irodsParentPath = parentPath.toString();
 			log.debug("parent path:{}", irodsParentPath);
-                        log.debug("parent path:{}", irodsParentPath);
+			log.debug("parent path:{}", irodsParentPath);
 
 			IRODSFile pathFile = this.irodsAccessObjectFactory.getIRODSFileFactory(this.resolveIrodsAccount())
 					.instanceIRODSFile(irodsParentPath, path);
-                        //delete item
+			// delete item
 			pathFile.delete();
-                        
-                        //unmap item 
-                        unmap(resolvePath(objectPath), objectPath);
-                       
+
+			// unmap item
+			unmap(resolvePath(objectPath), objectPath);
 
 		} catch (JargonException e) {
 			log.error("exception making directory", e);
 			throw new IOException("Error making directory in iRODS", e);
-		}
-                finally {
+		} finally {
 			irodsAccessObjectFactory.closeSessionAndEatExceptions();
 		}
 
@@ -495,14 +493,16 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	}
 
 	@Override
-	public Inode symlink(Inode parent, String linkName, String targetName, Subject subject, int mode) throws IOException {
+	public Inode symlink(Inode parent, String linkName, String targetName, Subject subject, int mode)
+			throws IOException {
 		// TODO Auto-generated method stub
 		System.out.println("symlink: " + parent.toString());
 		return null;
 	}
 
 	@Override
-	public WriteResult write(Inode inode, byte[] data, long offset, int count, StabilityLevel stabilityLevel) throws IOException {
+	public WriteResult write(Inode inode, byte[] data, long offset, int count, StabilityLevel stabilityLevel)
+			throws IOException {
 		// TODO Auto-generated method stub
 		System.out.println("write: " + inode.toString());
 		return null;
@@ -674,21 +674,21 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	private IRODSAccount resolveIrodsAccount() {
 		return rootAccount;
 	}
-        
-        private void unmap(long inodeNumber, Path path) {
-            Path removedPath = inodeToPath.remove(inodeNumber);
-            if (!path.equals(removedPath)) {
-                throw new IllegalStateException();
-            }
-            if (pathToInode.remove(path) != inodeNumber) {
-                throw new IllegalStateException();
-            }
-        }
 
-    private void remap(long inodeNumber, Path oldPath, Path newPath) {
-        //TODO - attempt rollback?
-        unmap(inodeNumber, oldPath);
-        map(inodeNumber, newPath);
-    }
+	private void unmap(long inodeNumber, Path path) {
+		Path removedPath = inodeToPath.remove(inodeNumber);
+		if (!path.equals(removedPath)) {
+			throw new IllegalStateException();
+		}
+		if (pathToInode.remove(path) != inodeNumber) {
+			throw new IllegalStateException();
+		}
+	}
+
+	private void remap(long inodeNumber, Path oldPath, Path newPath) {
+		// TODO - attempt rollback?
+		unmap(inodeNumber, oldPath);
+		map(inodeNumber, newPath);
+	}
 
 }
