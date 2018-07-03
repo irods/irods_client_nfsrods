@@ -20,6 +20,7 @@ import org.irods.jargon.nfs.vfs.utils.PermissionBitmaskUtils;
 import org.irods.jargon.testutils.AssertionHelper;
 import org.irods.jargon.testutils.IRODSTestSetupUtilities;
 import org.irods.jargon.testutils.TestingPropertiesHelper;
+import org.irods.jargon.testutils.filemanip.FileGenerator;
 import org.irods.jargon.testutils.filemanip.ScratchFileUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -358,6 +359,8 @@ public class IrodsVirtualFileSystemTest {
             String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
             IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
             
+            
+            
             //create VFS
             IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
             
@@ -365,8 +368,9 @@ public class IrodsVirtualFileSystemTest {
             String dir1 = "testFileMoveDir1";
             String dir2 = "testFileMoveDir2";
             
-            String dirFile = "testMoveFile";
+            String dirFile = "testFile.txt";
             
+           
             
             //get subject for mkdir()
             Subject currentUser = UnixUtils.getCurrentUser();
@@ -374,10 +378,13 @@ public class IrodsVirtualFileSystemTest {
             //create folders and file for testing
             Inode testDir1 = vfs.mkdir(vfs.getRootInode(), dir1, currentUser, 0);
             Inode dest = vfs.mkdir(vfs.getRootInode(), dir2, currentUser, 0);
-            Inode file1 = vfs.mkdir(testDir1, dirFile, currentUser, 0);
+            
+            //create file
+            Inode file = vfs.mkdir(vfs.getRootInode(), dir1+"/"+dirFile, currentUser, 0);
+            //FileGenerator.generateFileOfFixedLengthGivenName(homeDir+"/"+dir1, dirFile, 12);
             
             //move file
-            vfs.move(file1, dirFile, dest, null);
+            vfs.move(file, dirFile, dest, null);
             
             //remove folders and files from testing
             Inode root = vfs.getRootInode();
@@ -387,8 +394,70 @@ public class IrodsVirtualFileSystemTest {
         }
         
         @Test
-        public void testRead() throws Exception{
+        public void testMoveFileWithRename() throws Exception{
             
+            //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create folders and file for testing
+            String dir1 = "testFileMoveDir1";
+            String dir2 = "testFileMoveDir2";
+            
+            String dirFile = "testFile.txt";
+            String dirFileRename = "testFileRenamed.txt";
+            
+           
+            
+            //get subject for mkdir()
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            //create folders and file for testing
+            Inode testDir1 = vfs.mkdir(vfs.getRootInode(), dir1, currentUser, 0);
+            Inode dest = vfs.mkdir(vfs.getRootInode(), dir2, currentUser, 0);
+            
+            //create fil2
+            Inode file = vfs.mkdir(vfs.getRootInode(), dir1+"/"+dirFile, currentUser, 0);
+            //FileGenerator.generateFileOfFixedLengthGivenName(homeDir+"/"+dir1, dirFile, 12);
+            
+            //move file
+            vfs.move(file, dirFile, dest , dirFileRename);
+            
+            //remove folders and files from testing
+            Inode root = vfs.getRootInode();
+            vfs.remove(root, dir1);
+            vfs.remove(root, dir2);
+            
+        }
+        
+        
+        
+        @Test
+        public void testRead() throws Exception{
+             //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create folders and file for testing
+            String dir1 = "testfile.txt";
+            
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            Inode testDir1 = vfs.mkdir(vfs.getRootInode(), dir1, currentUser, 0);
         }
         
         @Test
