@@ -53,10 +53,12 @@ import java.nio.file.CopyOption;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.logging.Level;
 import org.dcache.nfs.status.NotEmptyException;
 import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.irods.jargon.core.pub.IRODSFileSystemAO;
 import org.irods.jargon.core.pub.TrashOperationsAO;
+import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 
 /**
  * iRODS implmentation of the nfs4j virtual file system
@@ -321,6 +323,54 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	@Override
 	public List<DirectoryEntry> list(Inode inode) throws IOException {
+            
+            try {
+                
+                //Get Path of inode
+                Path rootNodePath = inodeToPath.get(inode);
+                
+                String irodsAbsPath = rootNodePath.normalize().toString();
+                
+                CollectionAndDataObjectListAndSearchAO listAO = this.irodsAccessObjectFactory
+					.getCollectionAndDataObjectListAndSearchAO(resolveIrodsAccount());
+                /*
+                //get Irods file from path
+                Object irodsObj = listAO.getFullObjectForType(irodsAbsPath);
+                */
+                
+                //get collection listing from root node
+                List<CollectionAndDataObjectListingEntry> irodsDirectories = listAO.listCollectionsUnderPath(irodsAbsPath, 0);
+                
+                //final output list
+                final List<DirectoryEntry> list = new ArrayList<>();
+                
+                //go through every item
+                irodsDirectories.forEach(IRODSCdole -> {
+                    try{
+                        //get path
+                        Path filePath = Paths.get(IRODSCdole.getPathOrName());
+                        //make cookie num
+                        long cookie = resolvePath(filePath);
+                        //map cookie to path
+                        map(IRODSCdole.getId(), filePath);
+                        list.add(new DirectoryEntry(filePath.getFileName().toString(), toFh(IRODSCdole.getId()), statPath(filePath, cookie)));
+                        
+                        
+                    }
+                    catch(Exception e){
+                        System.out.println(e);
+                    }
+                });
+                       
+                return list; 
+                
+            } catch (JargonException ex) {
+                java.util.logging.Logger.getLogger(IrodsVirtualFileSystem.class.getName()).log(Level.SEVERE, null, ex);
+            } finally{
+                irodsAccessObjectFactory.closeSessionAndEatExceptions();
+            }
+            
+            /*
 		long inodeNumber = getInodeNumber(inode);
 		Path path = resolveInode(inodeNumber);
 		final List<DirectoryEntry> list = new ArrayList<>();
@@ -332,8 +382,14 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 				throw new IllegalStateException(e);
 			}
 		});
+            
+            
 		return list;
+            */
+            return null;
 	}
+        
+        
 
 	private long resolvePath(Path path) throws NoEntException {
 		Long inodeNumber = pathToInode.get(path);
@@ -664,7 +720,13 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 	private long getInodeNumber(Inode inode) {
 		return Longs.fromByteArray(inode.getFileId());
 	}
-
+            
+        
+        /*
+        
+        Irods file/collection is owned by first person who makes it
+        - unless inheritance is on. in this case, all permissions transfer to data inside it
+        */
 	/**
 	 * Stand-in for a method to return the current user or proxy as a given
 	 * user...not sure yet how the principal is resolved

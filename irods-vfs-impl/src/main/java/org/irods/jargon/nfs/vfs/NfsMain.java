@@ -33,7 +33,7 @@ public class NfsMain {
 		
 		ExportFile exportFile = new ExportFile(new File("config/exports"));
 		
-		IRODSAccount acct = IRODSAccount.instance("kdd-ws", 1247, "rods", "rods", "/tempZone/home/rods", "tempZone", "demoResc");
+		IRODSAccount acct = IRODSAccount.instance("WorkBot", 1247, "rods", "rods", "/tempZone/home/rods", "tempZone", "demoResc");
 		IRODSFileSystem fs = IRODSFileSystem.instance();
 		IRODSAccessObjectFactory factory = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
 		IRODSFile rootFile = factory.getIRODSFileFactory(acct).instanceIRODSFile("/tempZone/home/rods");
