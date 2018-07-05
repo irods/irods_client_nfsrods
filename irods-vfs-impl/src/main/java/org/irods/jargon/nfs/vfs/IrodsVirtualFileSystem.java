@@ -51,7 +51,12 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryNotEmptyException;
+import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.GroupPrincipal;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.Arrays;
 import java.util.logging.Level;
 import org.dcache.nfs.status.NotEmptyException;
@@ -327,7 +332,9 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
             try {
                 
                 //Get Path of inode
-                Path rootNodePath = inodeToPath.get(inode);
+                long inodeNumber = getInodeNumber(inode);
+		Path rootNodePath = resolveInode(inodeNumber);
+                
                 
                 String irodsAbsPath = rootNodePath.normalize().toString();
                 
@@ -346,14 +353,20 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
                 
                 //go through every item
                 irodsDirectories.forEach(IRODSCdole -> {
+                    
                     try{
+                        
                         //get path
-                        Path filePath = Paths.get(IRODSCdole.getPathOrName());
+                        //HOW DOES THIS NOT WORK.. IT WORKS EVERYWHERE ELSE....... 
+                        String filePathStr = IRODSCdole.getPathOrName();
+                        Path filePath = Paths.get(filePathStr);
+                        
                         //make cookie num
-                        long cookie = resolvePath(filePath);
+                        long cookie = IRODSCdole.getId();//resolvePath(filePath);
+                        
                         //map cookie to path
-                        map(IRODSCdole.getId(), filePath);
-                        list.add(new DirectoryEntry(filePath.getFileName().toString(), toFh(IRODSCdole.getId()), statPath(filePath, cookie)));
+                        map(cookie, filePath);
+                        list.add(new DirectoryEntry(filePath.getFileName().toString(), toFh(cookie), statPath(filePath, cookie)));
                         
                         
                     }
@@ -543,9 +556,66 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
 
 	@Override
 	public void setattr(Inode inode, Stat stat) throws IOException {
-		// TODO Auto-generated method stub
-		System.out.println("setattr: " + inode.toString());
-
+            /*
+            long inodeNumber = getInodeNumber(inode);
+            Path path = resolveInode(inodeNumber);
+            //PosixFileAttributeView attributeView = Files.getFileAttributeView(path, PosixFileAttributeView.class, NOFOLLOW_LINKS);
+            if (stat.isDefined(Stat.StatAttribute.OWNER)) {
+                try {
+                    String uid = String.valueOf(stat.getUid());
+                    UserPrincipal user = _lookupService.lookupPrincipalByName(uid);
+                    attributeView.setOwner(user);
+                } catch (IOException e) {
+                    throw new UnsupportedOperationException("set uid failed: " + e.getMessage());
+                }
+            }
+            if (stat.isDefined(Stat.StatAttribute.GROUP)) {
+                try {
+                    String gid = String.valueOf(stat.getGid());
+                    GroupPrincipal group = _lookupService.lookupPrincipalByGroupName(gid);
+                    attributeView.setGroup(group);
+                } catch (IOException e) {
+                    throw new UnsupportedOperationException("set gid failed: " + e.getMessage());
+                }
+            }
+            if (stat.isDefined(Stat.StatAttribute.MODE)) {
+                try {
+                    Files.setAttribute(path, "unix:mode", stat.getMode(), NOFOLLOW_LINKS);
+                } catch (IOException e) {
+                    throw new UnsupportedOperationException("set mode unsupported: " + e.getMessage());
+                }
+            }
+            if (stat.isDefined(Stat.StatAttribute.SIZE)) {
+                //little known fact - truncate() returns the original channel
+                //noinspection EmptyTryBlock
+                try (FileChannel ignored = FileChannel.open(path, StandardOpenOption.WRITE).truncate(stat.getSize())) {}
+            }
+            if (stat.isDefined(Stat.StatAttribute.ATIME)) {
+                try {
+                    FileTime time = FileTime.fromMillis(stat.getCTime());
+                    Files.setAttribute(path, "unix:lastAccessTime", time, NOFOLLOW_LINKS);
+                } catch (IOException e) {
+                    throw new UnsupportedOperationException("set atime failed: " + e.getMessage());
+                }
+            }
+            if (stat.isDefined(Stat.StatAttribute.MTIME)) {
+                try {
+                    FileTime time = FileTime.fromMillis(stat.getMTime());
+                    Files.setAttribute(path, "unix:lastModifiedTime", time, NOFOLLOW_LINKS);
+                } catch (IOException e) {
+                    throw new UnsupportedOperationException("set mtime failed: " + e.getMessage());
+                }
+            }
+            if (stat.isDefined(Stat.StatAttribute.CTIME)) {
+                try {
+                    FileTime time = FileTime.fromMillis(stat.getCTime());
+                    Files.setAttribute(path, "unix:ctime", time, NOFOLLOW_LINKS);
+                } catch (IOException e) {
+                    throw new UnsupportedOperationException("set ctime failed: " + e.getMessage());
+                }
+            }
+               */
+            
 	}
 
 	@Override

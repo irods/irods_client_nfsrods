@@ -2,8 +2,10 @@ package org.irods.jargon.nfs.vfs;
 
 import java.io.FilenameFilter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import javax.security.auth.Subject;
+import org.dcache.nfs.vfs.DirectoryEntry;
 import org.dcache.nfs.vfs.FsStat;
 
 import org.dcache.nfs.vfs.Inode;
@@ -236,6 +238,38 @@ public class IrodsVirtualFileSystemTest {
         
         @Test
         public void testList() throws Exception{
+             //get irods acct stuff ready
+            IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
+            IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
+            String homeDir = MiscIRODSUtils.buildIRODSUserHomeForAccountUsingDefaultScheme(irodsAccount);
+            IRODSFile rootFile = accessObjectFactory.getIRODSFileFactory(irodsAccount).instanceIRODSFile(homeDir);
+            
+            //create VFS
+            IrodsVirtualFileSystem vfs = new IrodsVirtualFileSystem(accessObjectFactory, irodsAccount, rootFile);
+            
+            //create Test Dir string
+            String path = "testLst";
+            
+            //get subject for mkdir()
+            Subject currentUser = UnixUtils.getCurrentUser();
+            
+            //call mkdir()
+            Inode testDirInode = vfs.mkdir(vfs.getRootInode(), path, currentUser, 0);
+            
+            //create misc folders for testing
+            String[] folders = {"Deleting", "These", "Wont", "Be", "Fun"};
+            
+            //make a bunch of folders in dir to read out
+            for(String folder: folders){
+                 vfs.mkdir(vfs.getRootInode(), path+"/"+folder, currentUser, 0);
+            }
+            
+            List<DirectoryEntry> data = null;
+            
+            data = vfs.list(testDirInode);
+            
+            Assert.assertFalse("List is empty", data.isEmpty());
+            
             
         }
         
