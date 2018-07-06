@@ -365,10 +365,12 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem {
                         long cookie = IRODSCdole.getId();//resolvePath(filePath);
                         
                         //map cookie to path
-                        map(cookie, filePath);
+                        if (!inodeToPath.containsKey(cookie) && !inodeToPath.containsValue(filePath))
+                        {
+                            map(cookie, filePath);
+                        }
+
                         list.add(new DirectoryEntry(filePath.getFileName().toString(), toFh(cookie), statPath(filePath, cookie)));
-                        
-                        
                     }
                     catch(Exception e){
                         System.out.println(e);
