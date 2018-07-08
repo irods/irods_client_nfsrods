@@ -1,1 +1,1 @@
-/home/amiecz46/nfstesting	127.0.0.1(rw)
+/ *(ro,no_root_squash)

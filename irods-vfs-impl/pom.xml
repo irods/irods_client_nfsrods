@@ -12,21 +12,35 @@
 	<packaging>jar</packaging>
 	<name>irods-vfs-impl</name>
 	<description>iRODS VFS implementation for NFS4J</description>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.dcache</groupId>
 			<artifactId>nfs4j-core</artifactId>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.irods.jargon</groupId>
 			<artifactId>jargon-core</artifactId>
 		</dependency>
+		
 		<dependency>
             <groupId>com.boundary</groupId>
             <artifactId>high-scale-lib</artifactId>
             <version>1.0.6</version>
         </dependency>
+
+        <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </dependency>
+
+        <dependency>
+          <groupId>log4j</groupId>
+          <artifactId>log4j</artifactId>
+        </dependency>
 	</dependencies>
+
 	<build>
 		<plugins>
 			<plugin>
@@ -143,6 +157,11 @@
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<configuration>
+                      <archive>
+                          <manifest>
+                              <mainClass>org.irods.jargon.nfs.vfs.NfsMain</mainClass>
+                          </manifest>
+                      </archive>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>

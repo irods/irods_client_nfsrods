@@ -1,20 +1,18 @@
 package org.irods.jargon.nfs.vfs;
 
-import java.io.FilenameFilter;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Properties;
-import javax.security.auth.Subject;
-import org.dcache.nfs.vfs.DirectoryEntry;
-import org.dcache.nfs.vfs.FsStat;
 
+import javax.security.auth.Subject;
+
+import org.dcache.nfs.vfs.DirectoryStream;
+import org.dcache.nfs.vfs.FsStat;
 import org.dcache.nfs.vfs.Inode;
 import org.dcache.nfs.vfs.Stat;
 import org.dcache.utils.UnixUtils;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
-import org.irods.jargon.core.pub.IRODSFileSystemAO;
 import org.irods.jargon.core.pub.TrashOperationsAO;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.utils.MiscIRODSUtils;
@@ -22,7 +20,6 @@ import org.irods.jargon.nfs.vfs.utils.PermissionBitmaskUtils;
 import org.irods.jargon.testutils.AssertionHelper;
 import org.irods.jargon.testutils.IRODSTestSetupUtilities;
 import org.irods.jargon.testutils.TestingPropertiesHelper;
-import org.irods.jargon.testutils.filemanip.FileGenerator;
 import org.irods.jargon.testutils.filemanip.ScratchFileUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -264,13 +261,9 @@ public class IrodsVirtualFileSystemTest {
                  vfs.mkdir(vfs.getRootInode(), path+"/"+folder, currentUser, 0);
             }
             
-            List<DirectoryEntry> data = null;
+            DirectoryStream stream = vfs.list(testDirInode, null, 0);
             
-            data = vfs.list(testDirInode);
-            
-            Assert.assertFalse("List is empty", data.isEmpty());
-            
-            
+            Assert.assertFalse("List is empty", stream.getEntries().stream().count() == 0);
         }
         
         @Test
