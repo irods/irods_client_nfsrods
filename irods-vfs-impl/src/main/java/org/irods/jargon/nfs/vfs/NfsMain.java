@@ -1,8 +1,11 @@
 package org.irods.jargon.nfs.vfs;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Properties;
 
+import org.apache.log4j.PropertyConfigurator;
 import org.dcache.nfs.ExportFile;
 import org.dcache.nfs.v3.MountServer;
 import org.dcache.nfs.v3.NfsServerV3;
@@ -22,6 +25,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NfsMain {
+	
+	static
+	{
+//		try
+//		{
+//            Properties props = new Properties();
+//			props.load(new FileInputStream("config/log4j.properties"));
+//            PropertyConfigurator.configure(props);
+//		}
+//		catch (IOException e)
+//		{
+//			e.printStackTrace();
+//		}
+		PropertyConfigurator.configure("config/log4j.properties");
+	}
     
     private static final Logger log = LoggerFactory.getLogger(NfsMain.class);
 
