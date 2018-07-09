@@ -1,9 +1,7 @@
 package org.irods.jargon.nfs.vfs;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Properties;
 
 import org.apache.log4j.PropertyConfigurator;
 import org.dcache.nfs.ExportFile;
@@ -28,16 +26,6 @@ public class NfsMain {
 	
 	static
 	{
-//		try
-//		{
-//            Properties props = new Properties();
-//			props.load(new FileInputStream("config/log4j.properties"));
-//            PropertyConfigurator.configure(props);
-//		}
-//		catch (IOException e)
-//		{
-//			e.printStackTrace();
-//		}
 		PropertyConfigurator.configure("config/log4j.properties");
 	}
     
@@ -46,7 +34,6 @@ public class NfsMain {
 	public static void main(String[] args) throws JargonException, IOException
 	{
 		OncRpcSvc nfsSvc = new OncRpcSvcBuilder()
-//			.withBindAddress("0.0.0.0")
 			.withPort(2049)
 			.withTCP()
 			.withAutoPublish()
