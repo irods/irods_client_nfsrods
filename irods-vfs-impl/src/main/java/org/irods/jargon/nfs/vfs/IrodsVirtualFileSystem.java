@@ -52,8 +52,8 @@ import org.irods.jargon.nfs.vfs.utils.PermissionBitmaskUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-//import com.fasterxml.jackson.databind.ObjectMapper;
-//import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.primitives.Longs;
 
 /**
@@ -65,11 +65,11 @@ import com.google.common.primitives.Longs;
 public class IrodsVirtualFileSystem implements VirtualFileSystem
 {
     private static final Logger log = LoggerFactory.getLogger(IrodsVirtualFileSystem.class);
-    //private static final ObjectMapper mapper = new ObjectMapper();
+    private static final ObjectMapper mapper = new ObjectMapper();
     
     static
     {
-    	//mapper.enable(SerializationFeature.INDENT_OUTPUT);
+    	mapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 
     private final IRODSAccessObjectFactory irodsAccessObjectFactory;
@@ -558,7 +558,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             IRODSFileFactory fileFactory = irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount());
             IRODSFile irodsFile = fileFactory.instanceIRODSFile(parentPath.toString(), _path);
 
-//            log.debug("inode map (before creating new directory) = {}", mapper.writeValueAsString(inodeToPath));
+            log.debug("inode map (before creating new directory) = {}", mapper.writeValueAsString(inodeToPath));
             log.debug("new directory path = {}", irodsFile.getAbsolutePath());
             irodsFile.mkdir();
 
