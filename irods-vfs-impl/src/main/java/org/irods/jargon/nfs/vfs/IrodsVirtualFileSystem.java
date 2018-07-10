@@ -398,6 +398,8 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         log.info("vfs::getattr");
         long inodeNumber = getInodeNumber(inode);
         Path path = resolveInode(inodeNumber);
+        log.debug("vfs::getattr - inode number = {}", inodeNumber);
+        log.debug("vfs::getattr - path         = {}", path);
         return statPath(path, inodeNumber);
     }
 
@@ -836,29 +838,24 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
      */
     private Stat statPath(Path path, long inodeNumber) throws IOException
     {
-        log.info("vfs::statPath");
+        log.debug("vfs::statPath");
+        log.debug("vfs::statPath - inode number = {}", inodeNumber);
+        log.debug("vfs::statPath - path         = {}", path);
 
         if (path == null)
         {
             throw new IllegalArgumentException("null path");
         }
 
-        /*
-         * wrap in try/catch/finally
-         */
-
-        log.info("path: {}", path);
-        log.info("inodeNumber: {}", inodeNumber);
-
         String irodsAbsPath = path.normalize().toString();
-        log.info("irodsAbsPath: {}", irodsAbsPath);
+        log.debug("vfs::statPath - absolute path =  {}", irodsAbsPath);
 
         try
         {
             CollectionAndDataObjectListAndSearchAO listAO = irodsAccessObjectFactory
                 .getCollectionAndDataObjectListAndSearchAO(resolveIrodsAccount());
             ObjStat objStat = listAO.retrieveObjectStatForPath(irodsAbsPath);
-            log.info("objStat: {}", objStat);
+            log.debug("vfs::statPath - objStat = {}", objStat);
 
             Stat stat = new Stat();
 
@@ -873,13 +870,17 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             sb.append(objStat.getOwnerZone());
             User user = userAO.findByName(sb.toString());
 
-            stat.setGid(0); // iRODS does not have a gid
-            stat.setUid(Integer.parseInt(user.getId()));
+//            stat.setGid(0); // iRODS does not have a gid
+//            stat.setUid(Integer.parseInt(user.getId()));
+            stat.setGid(1000); // iRODS does not have a gid
+            stat.setUid(1000);
+            
+            log.debug("vfs::statPath - user id = {}", user.getId());
 
             // TODO right now don't have soft link or mode support
             //stat.setMode(PermissionBitmaskUtils.USER_READ | PermissionBitmaskUtils.USER_WRITE);
             
-            log.info("object type = {}", objStat.getObjectType());
+            log.debug("vfs::statPath - object type = {}", objStat.getObjectType());
             
             if (objStat.getObjectType() == CollectionAndDataObjectListingEntry.ObjectType.COLLECTION)
             {
@@ -890,15 +891,17 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
                 stat.setMode(Stat.S_IFREG | 0777);
             }
             
-            log.info("permissions = " + Stat.modeToString(stat.getMode()));
+            log.debug("vfs::statPath - permissions = {}", Stat.modeToString(stat.getMode()));
 
-            stat.setNlink(0);
+            stat.setNlink(1);
             stat.setDev(17);
             stat.setIno((int) inodeNumber);
             stat.setRdev(17);
             stat.setSize(objStat.getObjSize());
             stat.setFileid((int) inodeNumber);
             stat.setGeneration(objStat.getModifiedAt().getTime());
+
+            log.debug("vfs::statPath - stat = {}", stat);
 
             return stat;
         }
