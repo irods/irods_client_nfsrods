@@ -876,10 +876,10 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             sb.append(objStat.getOwnerZone());
             User user = userAO.findByName(sb.toString());
 
-//            stat.setGid(0); // iRODS does not have a gid
-//            stat.setUid(Integer.parseInt(user.getId()));
-            stat.setGid(1000); // iRODS does not have a gid
-            stat.setUid(1000);
+            stat.setGid(0); // iRODS does not have a gid
+            stat.setUid(Integer.parseInt(user.getId()));
+//            stat.setGid(1000); // iRODS does not have a gid
+//            stat.setUid(1000);
             
             log.debug("vfs::statPath - user id = {}", user.getId());
 
