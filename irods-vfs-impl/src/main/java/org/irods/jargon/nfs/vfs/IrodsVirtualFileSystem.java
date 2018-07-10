@@ -159,13 +159,18 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         
         if (true)
         {
-            long inodeNumber = getInodeNumber(inode);
-            Path path = resolveInode(inodeNumber);
-            log.info("path = {}", path);
-            int m = statPath(path, inodeNumber).getMode();
-            log.info("correct mode (int) = {}", m);
-            log.info("correct mode       = {}", Stat.modeToString(m));
-            return m;
+        	// TODO Should 'mode' be returned?
+        	return mode;
+        	
+        	// TODO Should the mode from stat be returned instead?
+        	// Either one appears to work.
+//            long inodeNumber = getInodeNumber(inode);
+//            Path path = resolveInode(inodeNumber);
+//            log.info("path = {}", path);
+//            int m = statPath(path, inodeNumber).getMode();
+//            log.info("correct mode (int) = {}", m);
+//            log.info("correct mode       = {}", Stat.modeToString(m));
+//            return m;
         }
 
         if (inode == null)
@@ -464,7 +469,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
 
             // get collection listing from root node
             Path parentPath = resolveInode(getInodeNumber(_inode));
-            log.info("list contents of [{}] ...", parentPath);
+            log.info("vfs::list - list contents of [{}] ...", parentPath);
 
             String irodsAbsPath = parentPath.normalize().toString();
 
@@ -476,9 +481,10 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
                 {
                     String filename = _dataObj.getPathOrName();
                     Path filePath = parentPath.resolve(filename);
-                    log.info("list entry = {}", filePath);
                     long inodeNumber = -1;
                     
+                    log.debug("vfs::list - entry = {}", filePath);
+
                     if (inodeToPath.containsValue(filePath))
                     {
                         inodeNumber = resolvePath(filePath);
@@ -498,9 +504,9 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
                 }
             });
         }
-        catch (JargonException ex)
+        catch (JargonException e)
         {
-            java.util.logging.Logger.getLogger(IrodsVirtualFileSystem.class.getName()).log(Level.SEVERE, null, ex);
+            log.error("caught exception = {}", e);
             list.clear();
         }
         finally
