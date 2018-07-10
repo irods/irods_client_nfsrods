@@ -24,11 +24,11 @@ import org.slf4j.LoggerFactory;
 
 public class NfsMain {
 	
-	private static final String PREFIX = "/home/kory/dev/prog/java/github/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
+	//private static final String PREFIX = "/home/kory/dev/prog/java/github/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
 	
 	static
 	{
-		PropertyConfigurator.configure(PREFIX + "config/log4j.properties");
+		PropertyConfigurator.configure( "config/log4j.properties");
 	}
     
     private static final Logger log = LoggerFactory.getLogger(NfsMain.class);
@@ -42,9 +42,9 @@ public class NfsMain {
 			.withWorkerThreadIoStrategy()
 			.build();
 		
-		ExportFile exportFile = new ExportFile(new File(PREFIX + "config/exports"));
+		ExportFile exportFile = new ExportFile(new File("config/exports"));
 		
-		IRODSAccount acct = IRODSAccount.instance("kdd-ws", 1247, "rods", "rods", "/tempZone/home/rods", "tempZone", "demoResc");
+		IRODSAccount acct = IRODSAccount.instance("WorkBot", 1247, "rods", "rods", "/tempZone/home/rods", "tempZone", "demoResc");
 		IRODSFileSystem fs = IRODSFileSystem.instance();
 		IRODSAccessObjectFactory factory = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
 		IRODSFile rootFile = factory.getIRODSFileFactory(acct).instanceIRODSFile("/tempZone/home/rods");

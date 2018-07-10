@@ -52,8 +52,8 @@ import org.irods.jargon.nfs.vfs.utils.PermissionBitmaskUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+//import com.fasterxml.jackson.databind.ObjectMapper;
+//import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.primitives.Longs;
 
 /**
@@ -65,11 +65,11 @@ import com.google.common.primitives.Longs;
 public class IrodsVirtualFileSystem implements VirtualFileSystem
 {
     private static final Logger log = LoggerFactory.getLogger(IrodsVirtualFileSystem.class);
-    private static final ObjectMapper mapper = new ObjectMapper();
+    //private static final ObjectMapper mapper = new ObjectMapper();
     
     static
     {
-    	mapper.enable(SerializationFeature.INDENT_OUTPUT);
+    	//mapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 
     private final IRODSAccessObjectFactory irodsAccessObjectFactory;
@@ -558,7 +558,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             IRODSFileFactory fileFactory = irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount());
             IRODSFile irodsFile = fileFactory.instanceIRODSFile(parentPath.toString(), _path);
 
-            log.debug("inode map (before creating new directory) = {}", mapper.writeValueAsString(inodeToPath));
+//            log.debug("inode map (before creating new directory) = {}", mapper.writeValueAsString(inodeToPath));
             log.debug("new directory path = {}", irodsFile.getAbsolutePath());
             irodsFile.mkdir();
 
@@ -584,6 +584,8 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
     public boolean move(Inode inode, String oldName, Inode dest, String newName) throws IOException
     {
         log.debug("vfs::move");
+        log.debug("vfs::move:: OldName: "+ oldName + "node: " + inode.toString());
+        log.debug("vfs::move:: newName: "+ newName + "node: " + dest.toString());
 
         try
         {
@@ -594,7 +596,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             Path destPath = resolveInode(getInodeNumber(dest));
 
             // create IRODSFile for file to move
-            String irodsParentPath = parentPath.toString();
+            String irodsParentPath = parentPath.toString()+"/"+oldName;
             log.debug("parent path:{}", irodsParentPath);
             IRODSFile pathFile = irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount())
                 .instanceIRODSFile(irodsParentPath);
@@ -607,13 +609,16 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
                 destPathString = destPath.toString() + "/" + newName;
             else
                 destPathString = destPath.toString() + "/" + oldName;
-
+            
+            log.debug("vfs::move:: Destination Path: "+ destPathString);
             // create irods destination file object
             IRODSFile destFile = irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount())
                     .instanceIRODSFile(destPathString);
 
             // get file system controls
             IRODSFileSystemAO fileSystemAO = irodsAccessObjectFactory.getIRODSFileSystemAO(rootAccount);
+            
+            log.debug("vfs::move:: is file? "+ pathFile.isFile());
 
             // check if file or directory and run appropriate commands
             if (pathFile.isFile())
