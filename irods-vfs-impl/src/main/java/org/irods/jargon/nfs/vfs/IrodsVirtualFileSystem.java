@@ -632,7 +632,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
 
             // TODO: Is remap needed when moving files iRODS side, or will list be regened
             // via list() call?
-            // remap(getInodeNumber(inode), parentPath, destPath);
+            remap(getInodeNumber(inode), parentPath, destPath);
 
             return true;
         }
