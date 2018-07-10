@@ -632,7 +632,13 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
 
             // TODO: Is remap needed when moving files iRODS side, or will list be regened
             // via list() call?
-            remap(getInodeNumber(inode), parentPath, destPath);
+            Path oldPath = Paths.get(irodsParentPath);
+            Path newPath = Paths.get(destPathString);
+            log.debug("VFS::Move: Old Path: "+ oldPath);
+            log.debug("VFS::Move: new Path: "+ newPath);
+            log.debug("VFS::Move: Inode #: "+ pathToInode.get(oldPath));
+            remap(pathToInode.get(oldPath), oldPath, newPath);
+            
 
             return true;
         }
@@ -806,28 +812,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         return null;
     }
 
-    private void map(long inodeNumber, String irodsPath)
-    {
-        map(inodeNumber, Paths.get(irodsPath));
-    }
-
-    private void map(long inodeNumber, Path path)
-    {
-        if (inodeToPath.putIfAbsent(inodeNumber, path) != null)
-        {
-            throw new IllegalStateException();
-        }
-        Long otherInodeNumber = pathToInode.putIfAbsent(path, inodeNumber);
-        if (otherInodeNumber != null)
-        {
-            // try rollback
-            if (inodeToPath.remove(inodeNumber) != path)
-            {
-                throw new IllegalStateException("cant map, rollback failed");
-            }
-            throw new IllegalStateException("path ");
-        }
-    }
+    
 
     /**
      * Get the iRODS absolute path given the inode number
@@ -956,10 +941,36 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
     {
         return rootAccount;
     }
+    
+    /**Mapping**/
+    
+    private void map(long inodeNumber, String irodsPath)
+    {
+        map(inodeNumber, Paths.get(irodsPath));
+    }
 
+    private void map(long inodeNumber, Path path)
+    {
+        if (inodeToPath.putIfAbsent(inodeNumber, path) != null)
+        {
+            throw new IllegalStateException();
+        }
+        Long otherInodeNumber = pathToInode.putIfAbsent(path, inodeNumber);
+        if (otherInodeNumber != null)
+        {
+            // try rollback
+            if (inodeToPath.remove(inodeNumber) != path)
+            {
+                throw new IllegalStateException("cant map, rollback failed");
+            }
+            throw new IllegalStateException("path ");
+        }
+    }
+    
     private void unmap(long inodeNumber, Path path)
     {
         Path removedPath = inodeToPath.remove(inodeNumber);
+        log.debug("VFS::unmap: Path: " + path +" removedPath: "+removedPath);
         if (!path.equals(removedPath))
         {
             throw new IllegalStateException();
