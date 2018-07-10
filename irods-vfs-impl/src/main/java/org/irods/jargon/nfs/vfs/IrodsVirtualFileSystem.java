@@ -483,37 +483,31 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             List<CollectionAndDataObjectListingEntry> entries = listAO
                 .listDataObjectsAndCollectionsUnderPath(irodsAbsPath);
 
-            entries.forEach(_dataObj -> {
-                try
-                {
-                    Path filePath = parentPath.resolve(_dataObj.getPathOrName());
-                    long inodeNumber = -1;
-                    
-                    log.debug("vfs::list - entry = {}", filePath);
+            for (final CollectionAndDataObjectListingEntry dataObj : entries)
+            {
+                Path filePath = parentPath.resolve(dataObj.getPathOrName());
+                long inodeNumber = -1;
+                
+                log.debug("vfs::list - entry = {}", filePath);
 
-                    if (inodeToPath.containsValue(filePath))
-                    {
-                        inodeNumber = resolvePath(filePath);
-                    }
-                    else
-                    {
-                        inodeNumber = fileId.getAndIncrement();
-                        map(inodeNumber, filePath);
-                    }
-
-                    Stat stat = statPath(filePath, inodeNumber);
-                    list.add(new DirectoryEntry(filePath.getFileName().toString(), toFh(inodeNumber), stat, inodeNumber));
-                }
-                catch (Exception e)
+                if (inodeToPath.containsValue(filePath))
                 {
-                    log.error("caught exception = {}", e);
+                    inodeNumber = resolvePath(filePath);
                 }
-            });
+                else
+                {
+                    inodeNumber = fileId.getAndIncrement();
+                    map(inodeNumber, filePath);
+                }
+
+                Stat stat = statPath(filePath, inodeNumber);
+                list.add(new DirectoryEntry(filePath.getFileName().toString(), toFh(inodeNumber), stat, inodeNumber));
+            }
         }
         catch (JargonException e)
         {
-            log.error("caught exception = {}", e);
-            list.clear();
+            log.error("error during list", e);
+            throw new IOException(e);
         }
         finally
         {
@@ -558,12 +552,12 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             IRODSFileFactory fileFactory = irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount());
             IRODSFile irodsFile = fileFactory.instanceIRODSFile(parentPath.toString(), _path);
 
-            log.debug("inode map (before creating new directory) = {}", mapper.writeValueAsString(inodeToPath));
-            log.debug("new directory path = {}", irodsFile.getAbsolutePath());
+            log.debug("vfs::mkdir - inode map (before creating new directory) = {}", mapper.writeValueAsString(inodeToPath));
+            log.debug("vfs::mkdir - new directory path = {}", irodsFile.getAbsolutePath());
             irodsFile.mkdir();
 
             long inodeNumber = fileId.getAndIncrement();
-            log.debug("new inode number = {}", inodeNumber);
+            log.debug("vfs::mkdir - new inode number = {}", inodeNumber);
 
             map(inodeNumber, irodsFile.getAbsolutePath());
 
@@ -572,7 +566,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         catch (JargonException e)
         {
             log.error("exception making directory", e);
-            throw new IOException("Error making directory in iRODS", e);
+            throw new IOException(e);
         }
         finally
         {
@@ -638,14 +632,13 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             log.debug("VFS::Move: new Path: "+ newPath);
             log.debug("VFS::Move: Inode #: "+ pathToInode.get(oldPath));
             remap(pathToInode.get(oldPath), oldPath, newPath);
-            
 
             return true;
         }
         catch (JargonException e)
         {
-            log.error("exception making directory", e);
-            throw new IOException("Error making directory in iRODS", e);
+            log.error("error during move", e);
+            throw new IOException(e);
         }
         finally
         {
@@ -707,8 +700,8 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         }
         catch (JargonException e)
         {
-            log.error("exception making directory", e);
-            throw new IOException("Error making directory in iRODS", e);
+            log.error("error during remove", e);
+            throw new IOException(e);
         }
         finally
         {
@@ -892,7 +885,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             }
             else if (objStat.getObjectType() == CollectionAndDataObjectListingEntry.ObjectType.DATA_OBJECT)
             {
-                stat.setMode(Stat.S_IFREG | 0777);
+                stat.setMode(Stat.S_IFREG | 0666);
             }
             
             log.debug("vfs::statPath - permissions = {}", Stat.modeToString(stat.getMode()));
@@ -911,7 +904,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         }
         catch (NumberFormatException | JargonException e)
         {
-            log.error("exception getting stat for path:{}", path, e);
+            log.error("exception getting stat for path: {}", path, e);
             throw new IOException(e);
         }
         finally
