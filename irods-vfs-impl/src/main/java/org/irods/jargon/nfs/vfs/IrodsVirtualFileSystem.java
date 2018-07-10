@@ -954,5 +954,4 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         unmap(inodeNumber, oldPath);
         map(inodeNumber, newPath);
     }
-
 }
