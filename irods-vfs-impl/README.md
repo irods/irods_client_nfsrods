@@ -2,7 +2,7 @@
 
 ## A prototype of an NFS4J Mount for iRODS: https://github.com/dCache/nfs4j
 
-#Installation
+# Installation
 
 1) Stop NFS service on machine
 ```
@@ -14,12 +14,12 @@ $ sudo systemctl stop nfs-kernel-server.service
 $ cd <project_dir>; mvn install
 ```
 
-3)Compile and run jar file
+3) Execute jar file
 ```
 $ sudo java -jar target/irods-vfs-impl-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-4)Mount
+4) Mount
 ```
 $ sudo mount <hostname>:<host_dir> <client_dir>
 ```
