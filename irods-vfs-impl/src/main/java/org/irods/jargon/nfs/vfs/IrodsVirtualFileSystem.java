@@ -55,6 +55,9 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.primitives.Longs;
+import org.irods.jargon.core.pub.domain.Collection;
+import org.irods.jargon.core.pub.domain.DataObject;
+import org.irods.jargon.core.pub.domain.UserFilePermission;
 
 /**
  * iRODS implmentation of the nfs4j virtual file system
@@ -876,6 +879,9 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
 
             // TODO right now don't have soft link or mode support
             //stat.setMode(PermissionBitmaskUtils.USER_READ | PermissionBitmaskUtils.USER_WRITE);
+            
+            //get file permission
+            
             
             log.debug("vfs::statPath - object type = {}", objStat.getObjectType());
             

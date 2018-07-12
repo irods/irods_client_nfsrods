@@ -24,8 +24,8 @@ import org.slf4j.LoggerFactory;
 
 public class NfsMain {
 	
-//    private static final String PREFIX = "/home/amiecz46/Desktop/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
-    private static final String PREFIX = "/home/kory/dev/prog/java/github/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
+    private static final String PREFIX = "/home/amiecz46/Desktop/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
+//    private static final String PREFIX = "/home/kory/dev/prog/java/github/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
 	
 	static
 	{

@@ -1,5 +1,5 @@
 package org.irods.jargon.nfs.vfs.utils;
 public final class VfsVersion {
  public static String VERSION="1.0.0-SNAPSHOT";
- public static String BUILD_TIME="2018-07-10T23:07:09Z";
+ public static String BUILD_TIME="2018-07-11T15:03:11Z";
 }
