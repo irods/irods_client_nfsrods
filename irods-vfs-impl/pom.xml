@@ -12,8 +12,16 @@
 	<packaging>jar</packaging>
 	<name>irods-vfs-impl</name>
 	<description>iRODS VFS implementation for NFS4J</description>
-
+        <repositories>
+            <repository>
+                <id>dcache-snapshots</id>
+                <name>dCache.ORG maven repository</name>
+                <url>https://download.dcache.org/nexus/content/repositories/releases</url>
+                <layout>default</layout>
+            </repository>
+        </repositories>
 	<dependencies>
+
 		<dependency>
 			<groupId>org.dcache</groupId>
 			<artifactId>nfs4j-core</artifactId>
@@ -65,6 +73,15 @@
 			<artifactId>jackson-annotations</artifactId>
 			<version>2.9.6</version>
 		</dependency>
+                
+                <dependency>
+                    <groupId>org.dcache</groupId>
+                    <artifactId>oncrpc4j-core</artifactId>
+                    <version>3.0.1</version>
+                        <type>jar</type>
+                </dependency>
+
+
 	</dependencies>
 
 	<build>
