@@ -13,6 +13,8 @@ import org.dcache.nfs.vfs.VirtualFileSystem;
 import org.dcache.oncrpc4j.rpc.OncRpcProgram;
 import org.dcache.oncrpc4j.rpc.OncRpcSvc;
 import org.dcache.oncrpc4j.rpc.OncRpcSvcBuilder;
+import org.dcache.oncrpc4j.rpc.gss.GssSessionManager;
+import org.ietf.jgss.GSSException;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
@@ -21,6 +23,7 @@ import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.irods.jargon.nfs.vfs.IrodsIdMap;
 
 public class NfsMain {
 	
@@ -34,13 +37,17 @@ public class NfsMain {
     
     private static final Logger log = LoggerFactory.getLogger(NfsMain.class);
 
-	public static void main(String[] args) throws JargonException, IOException
+	public static void main(String[] args) throws JargonException, IOException, GSSException
 	{
+                
+                IrodsIdMap _idMapper = new IrodsIdMap();
 		OncRpcSvc nfsSvc = new OncRpcSvcBuilder()
 			.withPort(2049)
 			.withTCP()
 			.withAutoPublish()
 			.withWorkerThreadIoStrategy()
+                        .withGssSessionManager(new GssSessionManager(_idMapper))
+                        .withSubjectPropagation()
 			.build();
 		
 		ExportFile exportFile = new ExportFile(new File(PREFIX + "config/exports"));
