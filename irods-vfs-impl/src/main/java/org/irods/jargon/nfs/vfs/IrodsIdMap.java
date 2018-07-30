@@ -12,11 +12,15 @@ import org.dcache.nfs.v4.NfsLoginService;
 import org.dcache.oncrpc4j.rpc.RpcLoginService;
 import org.dcache.oncrpc4j.rpc.RpcTransport;
 import org.ietf.jgss.GSSContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  *
  * @author alek
  */
 public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
+       
+    private static final Logger log = LoggerFactory.getLogger(IrodsIdMap.class);
     
     private static final int NOBODY_UID = 65534;
     private static final int NOBODY_GID = 65534;
@@ -27,28 +31,34 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
     @Override
     public int principalToGid(String principal) {
         try {
+            log.debug("PrincipalToGid: "+ Integer.parseInt(principal));
             return Integer.parseInt(principal);
         } catch (NumberFormatException e) {
         }
+        
         return NOBODY_GID;
     }
 
     @Override
     public int principalToUid(String principal) {
         try {
+            log.debug("PrincipalToUid: "+ Integer.parseInt(principal));
             return Integer.parseInt(principal);
         } catch (NumberFormatException e) {
         }
+        log.debug("PrincipalToGid");
         return NOBODY_UID;
     }
 
     @Override
     public String uidToPrincipal(int id) {
+        log.debug("uidToPRincipal: "+ Integer.toString(id));
         return Integer.toString(id);
     }
 
     @Override
     public String gidToPrincipal(int id) {
+        log.debug("gidToPrincipal: "+ Integer.toString(id));
         return Integer.toString(id);
     }
     /*
@@ -61,6 +71,13 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
     @Override
     public Subject login(RpcTransport rt, GSSContext gssc) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+    
+    @Override
+    public String toString(){
+        
+        
+        return "IrodsIdMap{"+this.NOBODY_UID+"}";
     }
     
 }

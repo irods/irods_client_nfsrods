@@ -56,7 +56,7 @@ public class NfsMain {
 		IRODSFileSystem fs = IRODSFileSystem.instance();
 		IRODSAccessObjectFactory factory = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
 		IRODSFile rootFile = factory.getIRODSFileFactory(acct).instanceIRODSFile("/tempZone/home/rods");
-		VirtualFileSystem vfs = new IrodsVirtualFileSystem(factory, acct, rootFile);
+		VirtualFileSystem vfs = new IrodsVirtualFileSystem(factory, acct, rootFile, _idMapper);
 			
 		NFSServerV41 nfs4 = new NFSServerV41.Builder()
 		    .withExportFile(exportFile)

@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.primitives.Longs;
+import jline.internal.Log;
 import org.irods.jargon.core.pub.domain.Collection;
 import org.irods.jargon.core.pub.domain.DataObject;
 import org.irods.jargon.core.pub.domain.UserFilePermission;
@@ -81,7 +82,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
     private final NonBlockingHashMapLong<Path> inodeToPath = new NonBlockingHashMapLong<>();
     private final NonBlockingHashMap<Path, Long> pathToInode = new NonBlockingHashMap<>();
     private final AtomicLong fileId = new AtomicLong(1); // numbering starts at 1
-    private final NfsIdMapping _idMapper = new SimpleIdMap();
+    private final NfsIdMapping _idMapper;
 
     /**
      * Default constructor
@@ -96,7 +97,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
      */
     public IrodsVirtualFileSystem(IRODSAccessObjectFactory _irodsAccessObjectFactory,
                                   IRODSAccount _rootAccount,
-                                  IRODSFile _root) throws DataNotFoundException, JargonException
+                                  IRODSFile _root, IrodsIdMap idMapper) throws DataNotFoundException, JargonException
     {
         super(); // This is probably not needed.
 
@@ -114,11 +115,15 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         {
             throw new IllegalArgumentException("null root");
         }
-
+        
+        
+        _idMapper = idMapper;
         irodsAccessObjectFactory = _irodsAccessObjectFactory;
         rootAccount = _rootAccount;
         root = _root;
-
+        
+        Log.info("IdMapping: " + _idMapper.toString());
+        
         establishRoot();
     }
 
