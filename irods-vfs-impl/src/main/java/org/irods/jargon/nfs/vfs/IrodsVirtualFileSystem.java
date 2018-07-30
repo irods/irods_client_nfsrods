@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.primitives.Longs;
+import java.security.AccessController;
 import jline.internal.Log;
 import org.irods.jargon.core.pub.domain.Collection;
 import org.irods.jargon.core.pub.domain.DataObject;
@@ -878,6 +879,9 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             User user = userAO.findByName(sb.toString());
 
             stat.setGid(0); // iRODS does not have a gid
+            Subject subject = Subject.getSubject(AccessController.getContext());
+            log.debug("Subject: " + subject.toString());
+            subject.getPrincipals().forEach(e -> log.debug(e.toString()));
             stat.setUid(Integer.parseInt(user.getId()));
             
             log.debug("vfs::statPath - user id = {}", user.getId());

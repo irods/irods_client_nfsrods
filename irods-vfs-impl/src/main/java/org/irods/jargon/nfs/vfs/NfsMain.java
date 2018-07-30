@@ -2,7 +2,9 @@ package org.irods.jargon.nfs.vfs;
 
 import java.io.File;
 import java.io.IOException;
+import javax.crypto.Cipher;
 
+import java.security.NoSuchAlgorithmException;
 import org.apache.log4j.PropertyConfigurator;
 import org.dcache.nfs.ExportFile;
 import org.dcache.nfs.v3.MountServer;
@@ -27,7 +29,7 @@ import org.irods.jargon.nfs.vfs.IrodsIdMap;
 
 public class NfsMain {
 	
-    private static final String PREFIX = "/home/amiecz46/Desktop/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
+    private static final String PREFIX = "/home/alek/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
 //    private static final String PREFIX = "/home/kory/dev/prog/java/github/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
 	
 	static
@@ -37,8 +39,11 @@ public class NfsMain {
     
     private static final Logger log = LoggerFactory.getLogger(NfsMain.class);
 
-	public static void main(String[] args) throws JargonException, IOException, GSSException
+	public static void main(String[] args) throws JargonException, IOException, GSSException, NoSuchAlgorithmException
 	{
+	
+	int maxKeyLen = Cipher.getMaxAllowedKeyLength("AES");
+   	log.debug("Max Key Length AES: " + maxKeyLen);
                 
                 IrodsIdMap _idMapper = new IrodsIdMap();
 		OncRpcSvc nfsSvc = new OncRpcSvcBuilder()
@@ -46,7 +51,7 @@ public class NfsMain {
 			.withTCP()
 			.withAutoPublish()
 			.withWorkerThreadIoStrategy()
-                        .withGssSessionManager(new GssSessionManager(_idMapper))
+                        .withGssSessionManager(new GssSessionManager(_idMapper,"nfs/172.25.14.126@NFSRENCI.ORG","/etc/krb5.keytab"))
                         .withSubjectPropagation()
 			.build();
 		

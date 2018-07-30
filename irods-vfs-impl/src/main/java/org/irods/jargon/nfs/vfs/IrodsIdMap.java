@@ -6,6 +6,8 @@
 package org.irods.jargon.nfs.vfs;
 import java.security.Principal;
 import javax.security.auth.Subject;
+import javax.security.auth.kerberos.KerberosPrincipal;
+import org.dcache.auth.Origin;
 import org.dcache.auth.Subjects;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.nfs.v4.NfsLoginService;
@@ -70,7 +72,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
 
     @Override
     public Subject login(RpcTransport rt, GSSContext gssc) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+         return Subjects.of(DEFAULT_UID, DEFAULT_GID);
     }
     
     @Override
