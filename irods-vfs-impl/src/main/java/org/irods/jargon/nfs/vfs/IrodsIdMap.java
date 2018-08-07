@@ -102,9 +102,9 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                     //get user ID of principal
                     String userID = "";
                     
-                    log.debug("Substring of principal[0,3]: "+ principal.substring(0,3));
+                    log.debug("Substring of principal[0,4]: "+ principal.substring(0,4));
                     //if it is service
-                    if(principal.substring(0,3) == "nfs/"){
+                    if(principal.substring(0,4).equals("nfs/")){
                         userID = _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId();
                     }
                     else{
