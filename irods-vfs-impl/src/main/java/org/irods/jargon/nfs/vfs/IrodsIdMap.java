@@ -113,12 +113,14 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                     
                     //add keypairing to irodsIdMap
                     irodsIdMap.put(principal, new Integer(userID));
-                    //create Irods rootfile instance
+                    //create Irods Account instance
+                    createIrodsAccountInstance(new Integer(userID));
                 }
                 
                 log.debug("IrodsIdMap Principal: " +principal +"    ID: "+ irodsIdMap.get(principal));
                 //return id mapping
                 return Subjects.of(irodsIdMap.get(principal), irodsIdMap.get(principal));
+                
 
         } catch (GSSException ex) {
 		log.debug("Login Error: " +ex);           
