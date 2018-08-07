@@ -5,6 +5,9 @@
  */
 package org.irods.jargon.nfs.vfs;
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
 import org.dcache.auth.Origin;
@@ -17,6 +20,10 @@ import org.ietf.jgss.GSSContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ietf.jgss.GSSException;
+import org.irods.jargon.core.connection.IRODSAccount;
+import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
+import org.irods.jargon.core.pub.IRODSAccessObjectFactoryImpl;
 /**
  *
  * @author alek
@@ -30,7 +37,17 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
 
     private static final int DEFAULT_UID = 1001;
     private static final int DEFAULT_GID = 1001;
-
+    private static Map<String, Integer> irodsIdMap = new HashMap<String, Integer>();
+    private IRODSAccessObjectFactory _irods;
+    private IRODSAccount _irodsAcct;
+    private String _irodsAdmin;
+    
+    public IrodsIdMap(IRODSAccessObjectFactory irodsFactory, IRODSAccount acct, String irodsAdmin){
+        _irodsAdmin = irodsAdmin;
+        _irods = irodsFactory;
+        _irodsAcct = acct;
+    }
+    
     @Override
     public int principalToGid(String principal) {
         try {
@@ -74,17 +91,40 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
 
     @Override
     public Subject login(RpcTransport rt, GSSContext gssc) {
-        try {	        
+        try {     
 		//enable getting cred delegation
 		log.debug("GSSC Name: "+ gssc.getSrcName().toString());
-		log.debug("GSSC Target Name: " + gssc.getTargName().toString());
-		
-		log.debug("Route: " +rt.getRemoteSocketAddress().getAddress());
-		log.debug("Rt hostname: " +rt.getRemoteSocketAddress().getHostString());
-                log.debug("Rt hoststring: " +rt.getRemoteSocketAddress().getHostName());
+                String principal =  gssc.getSrcName().toString();
+                
+                //if principal doesnt exist in mapping
+                if(irodsIdMap.get(principal) == null){
+                    
+                    //get user ID of principal
+                    String userID = "";
+                    
+                    log.debug("Substring of principal[0,3]: "+ principal.substring(0,3));
+                    //if it is service
+                    if(principal.substring(0,3) == "nfs/"){
+                        userID = _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId();
+                    }
+                    else{
+                        //parse principal
+                        String[] parts = principal.split("@");
+                        userID = _irods.getUserAO(_irodsAcct).findByName(parts[0]).getId();
+                    }
+                    
+                    //add keypairing to irodsIdMap
+                    irodsIdMap.put(principal, new Integer(userID));                  
+                }
+                
+                log.debug("IrodsIdMap Principal: " +principal +"    ID: "+ irodsIdMap.get(principal));
+                //return id mapping
+                return Subjects.of(irodsIdMap.get(principal), irodsIdMap.get(principal));
 
         } catch (GSSException ex) {
 		log.debug("Login Error: " +ex);           
+        } catch (JargonException ex) {
+            log.debug("Jargon Exception: " +ex);  
         }
          return Subjects.of(DEFAULT_UID, DEFAULT_GID);
     }

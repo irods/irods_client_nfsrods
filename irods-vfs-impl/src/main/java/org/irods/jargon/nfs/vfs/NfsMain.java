@@ -41,11 +41,18 @@ public class NfsMain {
 
 	public static void main(String[] args) throws JargonException, IOException, GSSException, NoSuchAlgorithmException
 	{
+        
+        //add irods admin acct
+        String irodsAdmin = "rods";
 	
-	int maxKeyLen = Cipher.getMaxAllowedKeyLength("AES");
-   	log.debug("Max Key Length AES: " + maxKeyLen);
-                
-                IrodsIdMap _idMapper = new IrodsIdMap();
+	//Load Up Rods Irods Account
+        IRODSAccount acct = IRODSAccount.instance("localhost", 1247, irodsAdmin, "rods", "/tempZone/home/rods", "tempZone", "demoResc");
+        IRODSFileSystem fs = IRODSFileSystem.instance();
+	IRODSAccessObjectFactory factory = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
+	IRODSFile rootFile = factory.getIRODSFileFactory(acct).instanceIRODSFile("/tempZone/home/rods");
+        
+        //send data to irodsIdMap
+        IrodsIdMap _idMapper = new IrodsIdMap(factory, acct, irodsAdmin);
 		OncRpcSvc nfsSvc = new OncRpcSvcBuilder()
 			.withPort(2049)
 			.withTCP()
@@ -57,10 +64,7 @@ public class NfsMain {
 		
 		ExportFile exportFile = new ExportFile(new File(PREFIX + "config/exports"));
 		
-		IRODSAccount acct = IRODSAccount.instance("localhost", 1247, "rods", "rods", "/tempZone/home/rods", "tempZone", "demoResc");
-		IRODSFileSystem fs = IRODSFileSystem.instance();
-		IRODSAccessObjectFactory factory = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
-		IRODSFile rootFile = factory.getIRODSFileFactory(acct).instanceIRODSFile("/tempZone/home/rods");
+		
 		VirtualFileSystem vfs = new IrodsVirtualFileSystem(factory, acct, rootFile, _idMapper);
 			
 		NFSServerV41 nfs4 = new NFSServerV41.Builder()
