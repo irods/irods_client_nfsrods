@@ -118,12 +118,15 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         }
         
         
-        _idMapper = idMapper;
+        
         irodsAccessObjectFactory = _irodsAccessObjectFactory;
         rootAccount = _rootAccount;
         root = _root;
+        _idMapper = idMapper;
         
         Log.info("IdMapping: " + _idMapper.toString());
+        Log.info("Get Root name: "+ root.getName());
+        
         
         establishRoot();
     }
@@ -337,7 +340,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             newFile.createNewFile();
             long newInodeNumber = fileId.getAndIncrement();
             map(newInodeNumber, newPath);
-//            setOwnershipAndMode(newPath, subject, mode);
+            setOwnershipAndMode(newPath, subject, mode);
             return toFh(newInodeNumber);
 
         }
@@ -355,10 +358,10 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         return null;
     }
 
-//    private void setOwnershipAndMode(Path newPath, Subject subject, int mode)
-//    {
-//        log.debug("setOwnershipAndMode()"); // TODO: right now a noop
-//    }
+    private void setOwnershipAndMode(Path newPath, Subject subject, int mode)
+    {
+        log.debug("[setOwnershipAndMode]Subject: " + subject.toString()); // TODO: right now a noop
+    }
 
     @Override
     public nfsace4[] getAcl(Inode inode) throws IOException
@@ -705,7 +708,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
 
             log.debug("parent path: {}", irodsParentPath);
 
-            IRODSFile pathFile = irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount())
+            IRODSFile pathFile = irodsAccessObjectFactory.getIRODSFileFactory(rootAccount)
                 .instanceIRODSFile(irodsParentPath, path);
 
             pathFile.delete();
@@ -878,7 +881,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             stat.setMTime(objStat.getModifiedAt().getTime());
             
 
-            UserAO userAO = irodsAccessObjectFactory.getUserAO(rootAccount);
+            UserAO userAO = irodsAccessObjectFactory.getUserAO(acct);
             StringBuilder sb = new StringBuilder();
             sb.append(objStat.getOwnerName());
             sb.append("#");
