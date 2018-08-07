@@ -116,9 +116,11 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                     
                     //create Irods Account instance
                     createIrodsAccountInstance(new Integer(userID));
+                    
+                    log.debug("IrodsIdMap Principal: " +principal +"    ID: "+ irodsIdMap.get(principal));
                 }
                 
-                log.debug("IrodsIdMap Principal: " +principal +"    ID: "+ irodsIdMap.get(principal));
+                
                 //return id mapping
                 return Subjects.of(irodsIdMap.get(principal), irodsIdMap.get(principal));
                 
@@ -133,13 +135,18 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
     
     public void createIrodsAccountInstance(int userID) throws JargonException{
         
-        //get user name
+        
+        if(userID+"" == _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId()){
+            irodsAcctMap.put(userID, _irodsAcct);
+        }
+        else{
+            //get user name
         String username = _irods.getUserAO(_irodsAcct).findById(""+userID).getName();
         String userzone = _irods.getUserAO(_irodsAcct).findById(""+userID).getZone();
-        String homedir = "/"+userzone+"/home/"+username;
-        
+        //String homedir = "/"+userzone+"/home/"+username;
+        String homedir = "/tempZone/home/rods";
         //create Irods RootFile instance 
-        IRODSAccount acct = IRODSAccount.instanceWithProxy("localhost", 1247, _irodsAdmin, "rods", "/tempZone/home/rods","tempZone","demoResc", username, userzone);
+        IRODSAccount acct = IRODSAccount.instanceWithProxy("localhost", 1247, "rods", "rods",homedir,"tempZone","demoResc", username, userzone);
         IRODSFileSystem fs = IRODSFileSystem.instance();
 	IRODSAccessObjectFactory factory = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
 	IRODSFile rootFile = factory.getIRODSFileFactory(acct).instanceIRODSFile(homedir);
@@ -147,6 +154,8 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
         //save to hashmap
         irodsAcctMap.put(userID, acct);
         log.debug("IrodsAcct Instance Hash: "+userID+ "   Acct: "+ acct);
+        }
+        
     }
     
     public IRODSAccount resolveIRODSUserAccount(int userID){

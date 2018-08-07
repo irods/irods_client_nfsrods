@@ -861,11 +861,13 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
 
         String irodsAbsPath = path.normalize().toString();
         log.debug("vfs::statPath - absolute path =  {}", irodsAbsPath);
+        IRODSAccount acct = resolveIrodsAccount();
+        log.debug("vfs::statPath - IRODSAccount: "+acct+"  Proxy Name: "+ acct.getProxyName());
 
         try
         {
             CollectionAndDataObjectListAndSearchAO listAO = irodsAccessObjectFactory
-                .getCollectionAndDataObjectListAndSearchAO(resolveIrodsAccount());
+                .getCollectionAndDataObjectListAndSearchAO(acct);
             ObjStat objStat = listAO.retrieveObjectStatForPath(irodsAbsPath);
             log.debug("vfs::statPath - objStat = {}", objStat);
 
@@ -876,7 +878,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             stat.setMTime(objStat.getModifiedAt().getTime());
             
 
-            UserAO userAO = irodsAccessObjectFactory.getUserAO(resolveIrodsAccount());
+            UserAO userAO = irodsAccessObjectFactory.getUserAO(acct);
             StringBuilder sb = new StringBuilder();
             sb.append(objStat.getOwnerName());
             sb.append("#");
@@ -956,6 +958,9 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         
         int userID = 0;
         userID = Integer.parseInt(Subject.getSubject(AccessController.getContext()).getPrincipals().iterator().next().getName());
+        
+        log.debug("[ResolveIrodsAccount] UserID: " + userID);
+        
         if(userID == 0){
             return rootAccount;
         }
