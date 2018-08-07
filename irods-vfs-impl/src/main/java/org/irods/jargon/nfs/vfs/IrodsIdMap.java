@@ -16,6 +16,7 @@ import org.dcache.oncrpc4j.rpc.RpcTransport;
 import org.ietf.jgss.GSSContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ietf.jgss.GSSException;
 /**
  *
  * @author alek
@@ -47,6 +48,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
             log.debug("PrincipalToUid: "+ Integer.parseInt(principal));
             return Integer.parseInt(principal);
         } catch (NumberFormatException e) {
+		log.debug("[IrodsIdMapper] PtoUid Exception: " + e);
         }
         log.debug("PrincipalToGid");
         return NOBODY_UID;
@@ -72,6 +74,18 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
 
     @Override
     public Subject login(RpcTransport rt, GSSContext gssc) {
+        try {	        
+		//enable getting cred delegation
+		log.debug("GSSC Name: "+ gssc.getSrcName().toString());
+		log.debug("GSSC Target Name: " + gssc.getTargName().toString());
+		
+		log.debug("Route: " +rt.getRemoteSocketAddress().getAddress());
+		log.debug("Rt hostname: " +rt.getRemoteSocketAddress().getHostString());
+                log.debug("Rt hoststring: " +rt.getRemoteSocketAddress().getHostName());
+
+        } catch (GSSException ex) {
+		log.debug("Login Error: " +ex);           
+        }
          return Subjects.of(DEFAULT_UID, DEFAULT_GID);
     }
     
