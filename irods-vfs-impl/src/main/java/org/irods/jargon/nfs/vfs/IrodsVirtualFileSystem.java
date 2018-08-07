@@ -481,7 +481,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         try
         {
             CollectionAndDataObjectListAndSearchAO listAO = irodsAccessObjectFactory
-                .getCollectionAndDataObjectListAndSearchAO(resolveIrodsAccount());
+                .getCollectionAndDataObjectListAndSearchAO(rootAccount);
 
             // get collection listing from root node
             Path parentPath = resolveInode(getInodeNumber(_inode));
@@ -559,7 +559,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         {
             Path parentPath = resolveInode(getInodeNumber(_inode));
 
-            IRODSFileFactory fileFactory = irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount());
+            IRODSFileFactory fileFactory = irodsAccessObjectFactory.getIRODSFileFactory(rootAccount);
             IRODSFile irodsFile = fileFactory.instanceIRODSFile(parentPath.toString(), _path);
 
             log.debug("vfs::mkdir - inode map (before creating new directory) = {}", mapper.writeValueAsString(inodeToPath));
@@ -867,7 +867,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
         try
         {
             CollectionAndDataObjectListAndSearchAO listAO = irodsAccessObjectFactory
-                .getCollectionAndDataObjectListAndSearchAO(acct);
+                .getCollectionAndDataObjectListAndSearchAO(rootAccount);
             ObjStat objStat = listAO.retrieveObjectStatForPath(irodsAbsPath);
             log.debug("vfs::statPath - objStat = {}", objStat);
 
@@ -878,18 +878,20 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             stat.setMTime(objStat.getModifiedAt().getTime());
             
 
-            UserAO userAO = irodsAccessObjectFactory.getUserAO(acct);
+            UserAO userAO = irodsAccessObjectFactory.getUserAO(rootAccount);
             StringBuilder sb = new StringBuilder();
             sb.append(objStat.getOwnerName());
             sb.append("#");
             sb.append(objStat.getOwnerZone());
-            User user = userAO.findByName(sb.toString());
+            User user = userAO.findByName(objStat.getOwnerName());
+            log.debug("user: " + user);
 
             //Set User stats
             //int irodsUserID = Integer.parseInt(Subject.getSubject(AccessController.getContext()).getPrincipals().iterator().next().getName());
             //log.debug("Subject: " + AccessController.getContext().getDomainCombiner().getClass().getName());
             //log.debug("Subject UserID: " + subject.getPrincipals().iterator().next().getName());
-            int userId = Integer.parseInt(Subject.getSubject(AccessController.getContext()).getPrincipals().iterator().next().getName());
+            //int userId = Integer.parseInt(Subject.getSubject(AccessController.getContext()).getPrincipals().iterator().next().getName());
+            int userId = Integer.parseInt(user.getId());
             stat.setUid(userId);
             stat.setGid(userId); // iRODS does not have a gid
             log.debug("vfs::statPath - user id = {}", userId);

@@ -135,7 +135,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
     
     public void createIrodsAccountInstance(int userID) throws JargonException{
         
-        
+        try{
         if(userID+"" == _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId()){
             irodsAcctMap.put(userID, _irodsAcct);
         }
@@ -154,6 +154,10 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
         //save to hashmap
         irodsAcctMap.put(userID, acct);
         log.debug("IrodsAcct Instance Hash: "+userID+ "   Acct: "+ acct);
+        }
+        }
+        catch(JargonException e){
+            log.debug("[IrodsIDMap] Create Irods Account Instance Jargon Error: "+e);
         }
         
     }
