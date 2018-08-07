@@ -24,6 +24,8 @@ import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactoryImpl;
+import org.irods.jargon.core.pub.IRODSFileSystem;
+import org.irods.jargon.core.pub.io.IRODSFile;
 /**
  *
  * @author alek
@@ -38,6 +40,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
     private static final int DEFAULT_UID = 1001;
     private static final int DEFAULT_GID = 1001;
     private static Map<String, Integer> irodsIdMap = new HashMap<String, Integer>();
+    private static Map<Integer, IRODSAccount> irodsAcctMap = new HashMap<Integer, IRODSAccount>();
     private IRODSAccessObjectFactory _irods;
     private IRODSAccount _irodsAcct;
     private String _irodsAdmin;
@@ -82,12 +85,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
         log.debug("gidToPrincipal: "+ Integer.toString(id));
         return Integer.toString(id);
     }
-    /*
-    @Override
-    public Subject login(Principal principal) {
-        return Subjects.of(DEFAULT_UID, DEFAULT_GID);
-    }
-*/
+
 
     @Override
     public Subject login(RpcTransport rt, GSSContext gssc) {
@@ -114,7 +112,8 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                     }
                     
                     //add keypairing to irodsIdMap
-                    irodsIdMap.put(principal, new Integer(userID));                  
+                    irodsIdMap.put(principal, new Integer(userID));
+                    //create Irods rootfile instance
                 }
                 
                 log.debug("IrodsIdMap Principal: " +principal +"    ID: "+ irodsIdMap.get(principal));
@@ -127,6 +126,27 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
             log.debug("Jargon Exception: " +ex);  
         }
          return Subjects.of(DEFAULT_UID, DEFAULT_GID);
+    }
+    
+    public void createIrodsAccountInstance(int userID) throws JargonException{
+        
+        //get user name
+        String username = _irods.getUserAO(_irodsAcct).findById(""+userID).getName();
+        String userzone = _irods.getUserAO(_irodsAcct).findById(""+userID).getZone();
+        String homedir = "/"+userzone+"/home/"+username;
+        
+        //create Irods RootFile instance 
+        IRODSAccount acct = IRODSAccount.instanceWithProxy("localhost", 1247, _irodsAdmin, "rods", "/tempZone/home/rods","tempZone","demoResc", username, userzone);
+        IRODSFileSystem fs = IRODSFileSystem.instance();
+	IRODSAccessObjectFactory factory = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
+	IRODSFile rootFile = factory.getIRODSFileFactory(acct).instanceIRODSFile(homedir);
+        
+        //save to hashmap
+        irodsAcctMap.put(userID, acct);
+    }
+    
+    public IRODSAccount resolveIRODSUserAccount(int userID){
+        return irodsAcctMap.get(Integer.valueOf(userID));
     }
     
     @Override
