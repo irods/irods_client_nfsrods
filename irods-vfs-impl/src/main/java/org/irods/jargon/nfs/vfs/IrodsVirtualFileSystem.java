@@ -878,14 +878,13 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             sb.append(objStat.getOwnerZone());
             User user = userAO.findByName(sb.toString());
 
-            stat.setGid(0); // iRODS does not have a gid
-            Subject subject = Subject.getSubject(AccessController.getContext());
-            log.debug("Subject: " + AccessController.getContext().getDomainCombiner().getClass().getName());
-		log.debug("Subject UserID: " + subject.getPrincipals().iterator().next().getName());
-		subject.getPrincipals().forEach(principal ->  log.debug("Principal List: " + principal.toString()));
-            subject.getPrincipals().forEach(e -> log.debug("Name: "+e.getName()));
-            stat.setUid(Integer.parseInt(user.getId()));
             
+            int irodsUserID = Integer.parseInt(Subject.getSubject(AccessController.getContext()).getPrincipals().iterator().next().getName());
+            //log.debug("Subject: " + AccessController.getContext().getDomainCombiner().getClass().getName());
+            //log.debug("Subject UserID: " + subject.getPrincipals().iterator().next().getName());
+
+            stat.setUid(irodsUserID);
+            stat.setGid(irodsUserID); // iRODS does not have a gid
             log.debug("vfs::statPath - user id = {}", user.getId());
 
             // TODO right now don't have soft link or mode support
@@ -894,7 +893,7 @@ public class IrodsVirtualFileSystem implements VirtualFileSystem
             //get file permission
             
             
-            log.debug("vfs::statPath - object type = {}", objStat.getObjectType());
+            //log.debug("vfs::statPath - object type = {}", objStat.getObjectType());
             
             if (objStat.getObjectType() == CollectionAndDataObjectListingEntry.ObjectType.COLLECTION)
             {
