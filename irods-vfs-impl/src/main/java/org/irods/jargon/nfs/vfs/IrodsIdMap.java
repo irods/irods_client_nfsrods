@@ -113,6 +113,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                     
                     //add keypairing to irodsIdMap
                     irodsIdMap.put(principal, new Integer(userID));
+                    
                     //create Irods Account instance
                     createIrodsAccountInstance(new Integer(userID));
                 }
@@ -145,6 +146,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
         
         //save to hashmap
         irodsAcctMap.put(userID, acct);
+        log.debug("IrodsAcct Instance Hash: "+userID+ "   Acct: "+ acct);
     }
     
     public IRODSAccount resolveIRODSUserAccount(int userID){
