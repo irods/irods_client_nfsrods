@@ -123,7 +123,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
 
                         //save user Object to user ID
                         _irodsPrincipleMap.put(user.getUserID(), user);
-                        log.debug("irodsPrincipleMap ID: " +user.getUserID() +"    User: "+ _principleUidMap.get(user.getUserID()));
+                        log.debug("irodsPrincipleMap ID: " +user.getUserID() +"    User: "+ _irodsPrincipleMap.get(user.getUserID()).toString());
                     
                     
                     
@@ -134,7 +134,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                 
                 
                 //return id mapping
-                return Subjects.of(_irodsPrincipleMap.get(principal).getUserID(), _irodsPrincipleMap.get(principal).getUserID());
+                return Subjects.of(_irodsPrincipleMap.get(_principleUidMap.get(principal)).getUserID(), _irodsPrincipleMap.get(_principleUidMap.get(principal)).getUserID());
                 
 
         } catch (GSSException ex) {

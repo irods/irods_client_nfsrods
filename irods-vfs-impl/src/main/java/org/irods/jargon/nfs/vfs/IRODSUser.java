@@ -184,6 +184,14 @@ public class IRODSUser {
         map(inodeNumber, newPath);
     }
 
+    @Override
+    public String toString() {
+        return "IRODSUser{" + "rootAccount=" + rootAccount + ", userID=" + userID + '}';
+    }
+    
+    
+    
+
 
     
     
