@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
+import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.dcache.auth.Origin;
 import org.dcache.auth.Subjects;
 import org.dcache.nfs.v4.NfsIdMapping;
@@ -39,16 +40,12 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
 
     private static final int DEFAULT_UID = 1001;
     private static final int DEFAULT_GID = 1001;
-    private static Map<String, Integer> irodsIdMap = new HashMap<String, Integer>();
-    private static Map<Integer, IRODSAccount> irodsAcctMap = new HashMap<Integer, IRODSAccount>();
-    private IRODSAccessObjectFactory _irods;
-    private IRODSAccount _irodsAcct;
-    private String _irodsAdmin;
+    private static Map<String, Integer> _principleUidMap = new NonBlockingHashMap<String, Integer>();
+    private static Map<Integer, IRODSUser> _irodsPrincipleMap = new NonBlockingHashMap<Integer, IRODSUser>();
+
     
-    public IrodsIdMap(IRODSAccessObjectFactory irodsFactory, IRODSAccount acct, String irodsAdmin){
-        _irodsAdmin = irodsAdmin;
-        _irods = irodsFactory;
-        _irodsAcct = acct;
+    public IrodsIdMap(){
+
     }
     
     @Override
@@ -95,75 +92,59 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                 String principal =  gssc.getSrcName().toString();
                 
                 //if principal doesnt exist in mapping
-                if(irodsIdMap.get(principal) == null){
+                if(_irodsPrincipleMap.get(principal) == null){
                     
                     //get user ID of principal
-                    String userID = "";
+                    String userName = "";
                     
                     log.debug("Substring of principal[0,4]: "+ principal.substring(0,4));
                     //if it is service
                     if(principal.substring(0,4).equals("nfs/")){
-                        userID = _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId();
+                        //userID = _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId();
+                        //TODO: Save as admin
+                        userName="rods";
                     }
                     else{
                         //parse principal
                         String[] parts = principal.split("@");
-                        userID = _irods.getUserAO(_irodsAcct).findByName(parts[0]).getId();
+                        userName = parts[0];
+                        
+                       
                     }
                     
-                    //add keypairing to irodsIdMap
-                    irodsIdMap.put(principal, new Integer(userID));
+                     //create User Object
+                        IRODSUser user = new IRODSUser(userName);
+
+                        //Save <Principle, Uid>
+                        _principleUidMap.put(principal, user.getUserID());
+                        log.debug("principleUidMap Principal: " +principal +"    ID: "+ _principleUidMap.get(principal));
+
+                        //save user Object to user ID
+                        _irodsPrincipleMap.put(user.getUserID(), user);
+                        log.debug("irodsPrincipleMap ID: " +user.getUserID() +"    User: "+ _principleUidMap.get(user.getUserID()));
                     
-                    //create Irods Account instance
-                    createIrodsAccountInstance(new Integer(userID));
                     
-                    log.debug("IrodsIdMap Principal: " +principal +"    ID: "+ irodsIdMap.get(principal));
+                    
+                    //createIrodsAccountInstance(new Integer(userName));
+                    
+                    
                 }
                 
                 
                 //return id mapping
-                return Subjects.of(irodsIdMap.get(principal), irodsIdMap.get(principal));
+                return Subjects.of(_irodsPrincipleMap.get(principal).getUserID(), _irodsPrincipleMap.get(principal).getUserID());
                 
 
         } catch (GSSException ex) {
 		log.debug("Login Error: " +ex);           
-        } catch (JargonException ex) {
-            log.debug("Jargon Exception: " +ex);  
-        }
-         return Subjects.of(DEFAULT_UID, DEFAULT_GID);
+        } 
+        
+        //if everything fails return defaults
+        return Subjects.of(DEFAULT_UID, DEFAULT_GID);
     }
     
-    public void createIrodsAccountInstance(int userID) throws JargonException{
-        
-        try{
-        if(userID+"" == _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId()){
-            irodsAcctMap.put(userID, _irodsAcct);
-        }
-        else{
-            //get user name
-        String username = _irods.getUserAO(_irodsAcct).findById(""+userID).getName();
-        String userzone = _irods.getUserAO(_irodsAcct).findById(""+userID).getZone();
-        //String homedir = "/"+userzone+"/home/"+username;
-        String homedir = "/tempZone/home/rods";
-        //create Irods RootFile instance 
-        IRODSAccount acct = IRODSAccount.instanceWithProxy("localhost", 1247, "rods", "rods",homedir,"tempZone","demoResc", username, userzone);
-        IRODSFileSystem fs = IRODSFileSystem.instance();
-	IRODSAccessObjectFactory factory = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
-	IRODSFile rootFile = factory.getIRODSFileFactory(acct).instanceIRODSFile(homedir);
-        
-        //save to hashmap
-        irodsAcctMap.put(userID, acct);
-        log.debug("IrodsAcct Instance Hash: "+userID+ "   Acct: "+ acct);
-        }
-        }
-        catch(JargonException e){
-            log.debug("[IrodsIDMap] Create Irods Account Instance Jargon Error: "+e);
-        }
-        
-    }
-    
-    public IRODSAccount resolveIRODSUserAccount(int userID){
-        return irodsAcctMap.get(Integer.valueOf(userID));
+    public IRODSUser resolveUser(int userID){
+        return _irodsPrincipleMap.get(Integer.valueOf(userID));
     }
     
     @Override
