@@ -103,11 +103,13 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                         //userID = _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId();
                         //TODO: Save as admin
                         userName="rods";
+                        log.debug("[IrodsIdMap] in service if statement");
                     }
                     else{
                         //parse principal
                         String[] parts = principal.split("@");
                         userName = parts[0];
+                        log.debug("[IrodsIdMap] in user if statement");
                         
                        
                     }
