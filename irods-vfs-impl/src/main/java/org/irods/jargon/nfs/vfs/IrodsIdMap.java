@@ -92,7 +92,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                 String principal =  gssc.getSrcName().toString();
                 
                 //if principal doesnt exist in mapping
-                if(_irodsPrincipleMap.get(principal) == null){
+                if(_principleUidMap.get(principal) == null){
                     
                     //get user ID of principal
                     String userName = "";
