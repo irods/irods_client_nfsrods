@@ -134,7 +134,7 @@ public class IrodsIdMap implements NfsIdMapping, RpcLoginService{
                 
                 
                 //return id mapping
-                return Subjects.of(_irodsPrincipleMap.get(_principleUidMap.get(principal)).getUserID(), _irodsPrincipleMap.get(_principleUidMap.get(principal)).getUserID());
+                return Subjects.of(_principleUidMap.get(principal), _principleUidMap.get(principal));
                 
 
         } catch (GSSException ex) {
