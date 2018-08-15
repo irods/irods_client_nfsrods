@@ -21,7 +21,7 @@ $ sudo java -jar target/irods-vfs-impl-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 
 4) Mount
 ```
-$ sudo mount <hostname>:<host_dir> <client_dir>
+$ sudo mount -o sec=krb5 <hostname>:<host_dir> <client_dir>
 ```
 
 
