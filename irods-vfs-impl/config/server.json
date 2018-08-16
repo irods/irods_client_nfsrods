@@ -1,0 +1,22 @@
+// server.json
+// ~~~~~~~~~~~
+
+{
+	nfs_server: {
+		listen_port: 2049,
+		service_principal: "nfs/<ip>@<realm>",
+		keytab_path: "/etc/krb5.keytab",
+        root_path: "/${zone}/"
+	},
+	
+	irods_server: {
+        zone: "tempZone",
+        host: "localhost",
+        port: 1247
+    },
+    
+	irods_proxy_admin_account: {
+		username: "rods",
+		password: "rods"
+	}
+}
