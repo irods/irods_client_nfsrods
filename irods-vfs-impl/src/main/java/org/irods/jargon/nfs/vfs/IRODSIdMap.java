@@ -24,8 +24,14 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
     private static final int DEFAULT_UID = 1001;
     private static final int DEFAULT_GID = 1001;
 
-    private static Map<String, Integer> principleUidMap_ = new NonBlockingHashMap<>();
-    private static Map<Integer, IRODSUser> irodsPrincipleMap_ = new NonBlockingHashMap<>();
+    private final ServerConfig config_;
+    private /*static*/ Map<String, Integer> principleUidMap_ = new NonBlockingHashMap<>();
+    private /*static*/ Map<Integer, IRODSUser> irodsPrincipleMap_ = new NonBlockingHashMap<>();
+    
+    public IRODSIdMap(ServerConfig _config)
+    {
+        config_ = _config;
+    }
 
     @Override
     public int principalToGid(String _principal)

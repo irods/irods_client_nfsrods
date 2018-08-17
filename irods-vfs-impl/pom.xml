@@ -202,7 +202,7 @@
 				<configuration>
                       <archive>
                           <manifest>
-                              <mainClass>org.irods.jargon.nfs.vfs.NfsMain</mainClass>
+                              <mainClass>org.irods.jargon.nfs.vfs.ServerMain</mainClass>
                           </manifest>
                       </archive>
 					<descriptorRefs>

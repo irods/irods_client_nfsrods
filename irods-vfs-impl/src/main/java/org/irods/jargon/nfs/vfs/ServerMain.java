@@ -22,8 +22,7 @@ import org.slf4j.LoggerFactory;
 
 public class ServerMain
 {
-//    private static final String PREFIX = "/home/alek/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
-    private static final String PREFIX = "/home/kory/dev/prog/java/github/jargon-nfs4j-irodsvfs/irods-vfs-impl/";
+    private static final String PREFIX = "/home/kory/dev/prog/java/github/irods_client_nfsrods/irods-vfs-impl/";
 
     static
     {
@@ -32,23 +31,30 @@ public class ServerMain
 
     private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
 
-    public static void main(String[] args)
-        throws JargonException, IOException, GSSException, NoSuchAlgorithmException
+    public static void main(String[] args) throws JargonException, IOException, GSSException, NoSuchAlgorithmException
     {
-        IRODSIdMap idMapper = new IRODSIdMap();
+        ServerConfig config = JSONUtils.fromJSON(new File(PREFIX + "config/server.json"), ServerConfig.class);
+        
+        log_.debug("main :: server config ==> {}", JSONUtils.toJSON(config));
+        
+        NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
+
+        IRODSIdMap idMapper = new IRODSIdMap(config);
+        GssSessionManager gssSessionMgr = new GssSessionManager(idMapper, nfsSvrConfig.getKerberosServicePrincipal(),
+                                                                nfsSvrConfig.getKerberosKeytab());
 
         // @formatter:off
         OncRpcSvc nfsSvc = new OncRpcSvcBuilder()
-            .withPort(2049)
+            .withPort(nfsSvrConfig.getPort())
             .withTCP()
             .withAutoPublish()
             .withWorkerThreadIoStrategy()
-            .withGssSessionManager(new GssSessionManager(idMapper, "nfs/172.25.14.126@NFSRENCI.ORG", "/etc/krb5.keytab"))
+//            .withGssSessionManager(new GssSessionManager(idMapper, "nfs/172.25.14.126@NFSRENCI.ORG", "/etc/krb5.keytab"))
+            .withGssSessionManager(gssSessionMgr)
             .withSubjectPropagation().build();
         // @formatter:on
 
         ExportFile exportFile = new ExportFile(new File(PREFIX + "config/exports"));
-
         VirtualFileSystem vfs = new IRODSVirtualFileSystem(idMapper);
 
         // @formatter:off
@@ -68,13 +74,13 @@ public class ServerMain
 
         nfsSvc.start();
 
-        log_.info("press [enter] to shutdown.");
+        log_.info("main :: press [enter] to shutdown.");
         System.in.read();
 
-        log_.info("shutting down ...");
+        log_.info("main :: shutting down ...");
         nfsSvc.stop();
 
-        log_.info("shutdown complete.");
+        log_.info("main :: shutdown complete.");
     }
 
 }

@@ -1,8 +1,8 @@
 package org.irods.jargon.nfs.vfs;
 
-import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.irods.jargon.core.connection.IRODSAccount;
@@ -20,9 +20,9 @@ public class IRODSUser
 {
     private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMap.class);
 
-    private NonBlockingHashMap<BigInteger, Path> inodeToPath_; // Used to be NonBlockingHashMapLong<Path>
-    private NonBlockingHashMap<Path, BigInteger> pathToInode_; // Used to be NonBlockingHashMap<Path, Long>
-    private BigInteger fileID_; // Used to be AtomicLong
+    private NonBlockingHashMap<Long, Path> inodeToPath_; // Used to be NonBlockingHashMapLong<Path>
+    private NonBlockingHashMap<Path, Long> pathToInode_; // Used to be NonBlockingHashMap<Path, Long>
+    private AtomicLong fileID_; // Used to be AtomicLong
     private IRODSAccessObjectFactory factory_;
     private IRODSAccount proxiedAcct_;
     private IRODSFile rootFile_;
@@ -32,7 +32,7 @@ public class IRODSUser
     {
         inodeToPath_ = new NonBlockingHashMap<>();
         pathToInode_ = new NonBlockingHashMap<>();
-        fileID_ = BigInteger.ONE; // numbering starts at 1
+        fileID_ = new AtomicLong(1); // numbering starts at 1
 
         // TODO: Export rods config data to config.java file
         String adminAcct = "rods";
@@ -45,13 +45,14 @@ public class IRODSUser
         try
         {
             // Create Irods Account instance for user and bind to associated globals
-            proxiedAcct_ = IRODSAccount.instanceWithProxy("localhost", 1247, _username, adminPw, zonePath, userzone, "demoResc", adminAcct, userzone);
+            proxiedAcct_ = IRODSAccount.instanceWithProxy("localhost", 1247, _username, adminPw, zonePath, userzone,
+                                                          "demoResc", adminAcct, userzone);
             IRODSFileSystem fs = IRODSFileSystem.instance();
             factory_ = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
             rootFile_ = factory_.getIRODSFileFactory(proxiedAcct_).instanceIRODSFile(zonePath);
 
             // faster to save userID once then contact jargon on repeat getUserID() calls
-//            User user = irodsAOFactory_.getUserAO(proxiedAcct_).findByName(proxiedAcct_.getUserName());
+            // User user = irodsAOFactory_.getUserAO(proxiedAcct_).findByName(proxiedAcct_.getUserName());
             User user = factory_.getUserAO(proxiedAcct_).findByName(_username);
             userID_ = Integer.parseInt(user.getId());
 
@@ -74,37 +75,30 @@ public class IRODSUser
         return rootFile_.getAbsolutePath();
     }
 
-    public NonBlockingHashMap<BigInteger, Path> getInodeToPath()
+    public NonBlockingHashMap<Long, Path> getInodeToPath()
     {
         return inodeToPath_;
     }
 
-//    public void setInodeToPath(NonBlockingHashMapLong<Path> inodeToPath)
-//    {
-//        this.inodeToPath_ = inodeToPath;
-//    }
+    // public void setInodeToPath(NonBlockingHashMapLong<Path> inodeToPath)
+    // {
+    // this.inodeToPath_ = inodeToPath;
+    // }
 
-    public NonBlockingHashMap<Path, BigInteger> getPathToInode()
+    public NonBlockingHashMap<Path, Long> getPathToInode()
     {
         return pathToInode_;
     }
 
-//    public void setPathToInode(NonBlockingHashMap<Path, Long> pathToInode)
-//    {
-//        this.pathToInode_ = pathToInode;
-//    }
+    // public void setPathToInode(NonBlockingHashMap<Path, Long> pathToInode)
+    // {
+    // this.pathToInode_ = pathToInode;
+    // }
 
-//    public Long getAndIncrementFileId()
-//    {
-//        return fileID_.getAndIncrement();
-//    }
-    
-    public BigInteger getAndIncFileID()
-    {
-        BigInteger oldID = fileID_;
-        fileID_ = fileID_.add(BigInteger.ONE);
-        return oldID;
-    }
+     public Long getAndIncFileID()
+     {
+     return fileID_.getAndIncrement();
+     }
 
     public IRODSAccessObjectFactory getIRODSAccessObjectFactory()
     {
@@ -140,13 +134,13 @@ public class IRODSUser
                 catch (DataNotFoundException ex)
                 {
                     // FIXME Replace line below.
-//                    Logger.getLogger(IRODSUser.class.getName()).log(Level.SEVERE, null, ex);
+                    // Logger.getLogger(IRODSUser.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
 
             log_.debug("mapping root...");
 
-            //map(fileID_.getAndIncrement(), rootFile_.getAbsolutePath()); // so root is always inode #1
+            // map(fileID_.getAndIncrement(), rootFile_.getAbsolutePath()); // so root is always inode #1
             map(getAndIncFileID(), rootFile_.getAbsolutePath()); // so root is always inode #1
         }
         finally
@@ -157,19 +151,19 @@ public class IRODSUser
 
     /** Mapping **/
 
-    public void map(BigInteger inodeNumber, String irodsPath)
+    public void map(Long inodeNumber, String irodsPath)
     {
         map(inodeNumber, Paths.get(irodsPath));
     }
 
-    public void map(BigInteger inodeNumber, Path path)
+    public void map(Long inodeNumber, Path path)
     {
         if (inodeToPath_.putIfAbsent(inodeNumber, path) != null)
         {
             throw new IllegalStateException();
         }
 
-        BigInteger otherInodeNumber = pathToInode_.putIfAbsent(path, inodeNumber);
+        Long otherInodeNumber = pathToInode_.putIfAbsent(path, inodeNumber);
 
         if (otherInodeNumber != null)
         {
@@ -183,7 +177,7 @@ public class IRODSUser
         }
     }
 
-    public void unmap(BigInteger inodeNumber, Path path)
+    public void unmap(Long inodeNumber, Path path)
     {
         Path removedPath = inodeToPath_.remove(inodeNumber);
 
@@ -198,7 +192,7 @@ public class IRODSUser
         }
     }
 
-    public void remap(BigInteger inodeNumber, Path oldPath, Path newPath)
+    public void remap(Long inodeNumber, Path oldPath, Path newPath)
     {
         unmap(inodeNumber, oldPath);
         map(inodeNumber, newPath);
