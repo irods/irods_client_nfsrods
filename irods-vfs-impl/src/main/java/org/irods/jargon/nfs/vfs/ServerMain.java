@@ -51,7 +51,8 @@ public class ServerMain
             .withWorkerThreadIoStrategy()
 //            .withGssSessionManager(new GssSessionManager(idMapper, "nfs/172.25.14.126@NFSRENCI.ORG", "/etc/krb5.keytab"))
             .withGssSessionManager(gssSessionMgr)
-            .withSubjectPropagation().build();
+            .withSubjectPropagation()
+            .build();
         // @formatter:on
 
         ExportFile exportFile = new ExportFile(new File(PREFIX + "config/exports"));

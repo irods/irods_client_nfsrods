@@ -69,14 +69,14 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
      * @param root
      *            {@link IRODSFile} that is the root node of this file system
      */
-    public IRODSVirtualFileSystem(IRODSIdMap idMapper) throws DataNotFoundException, JargonException
+    public IRODSVirtualFileSystem(IRODSIdMap _idMapper) throws DataNotFoundException, JargonException
     {
-        if (idMapper == null)
+        if (_idMapper == null)
         {
             throw new IllegalArgumentException("null idMapper");
         }
 
-        idMapper_ = idMapper;
+        idMapper_ = _idMapper;
 
         Log.info("IdMapping: " + idMapper_.toString());
     }
