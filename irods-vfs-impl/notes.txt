@@ -1,0 +1,21 @@
+Kerberos
+--------
+1. All principals must be in the same keytab.
+
+2. Only one keytab is valid at all times (e.g. creating new keytabs invalidates old ones).
+
+3. To create a normal principal, run:
+    addprinc <principal>
+
+4. To create a service principal, run:
+    addprinc -randkey <service>/<hostname>
+
+   The "-randkey" flag instructs Kerberos to randomize the key information.
+   This bypasses the need for passwords altogether for service principals.
+
+5. To add a principal to the default keytab, run:
+    ktadd -norandkey <principal_0> ... <principal_N>
+
+   The "-norandkey" is needed to maintain any passwords set on the principals.
+   Failing to include this option will cause the passwords to be invalidated
+   blocking users from accessing services.
