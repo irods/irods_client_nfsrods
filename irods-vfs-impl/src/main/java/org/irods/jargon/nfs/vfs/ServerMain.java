@@ -49,7 +49,6 @@ public class ServerMain
             .withTCP()
             .withAutoPublish()
             .withWorkerThreadIoStrategy()
-//            .withGssSessionManager(new GssSessionManager(idMapper, "nfs/172.25.14.126@NFSRENCI.ORG", "/etc/krb5.keytab"))
             .withGssSessionManager(gssSessionMgr)
             .withSubjectPropagation()
             .build();

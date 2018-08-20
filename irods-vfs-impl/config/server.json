@@ -2,21 +2,21 @@
 // ~~~~~~~~~~~
 
 {
-	nfs_server: {
-		port: 2049,
-		kerberos_service_principal: "nfs/krb-server@IRODS.KDD.COM",
-		kerberos_keytab: "/home/kory/krb5_nfsrods.keytab",
+    nfs_server: {
+        port: 2050,
+        kerberos_service_principal: "nfs/kdd-ws@IRODS.KDD.COM",
+        kerberos_keytab: "/etc/krb5.keytab",
         irods_mount_point: "/tempZone"
-	},
-	
-	irods_server: {
+    },
+
+    irods_server: {
         zone: "tempZone",
         host: "kdd-ws",
         port: 1247
     },
-    
-	irods_proxy_admin_account: {
-		username: "rods",
-		password: "rods"
-	}
+
+    irods_proxy_admin_account: {
+        username: "rods",
+        password: "rods"
+    }
 }
