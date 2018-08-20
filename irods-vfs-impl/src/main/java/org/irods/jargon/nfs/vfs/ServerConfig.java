@@ -22,13 +22,13 @@ public class ServerConfig
     }
 
     @JsonIgnore
-    public IRODSServerConfig getiRODSServerConfig()
+    public IRODSServerConfig getIRODSServerConfig()
     {
         return iRODSServerConfig_;
     }
 
     @JsonIgnore
-    public IRODSProxyAdminAccountConfig getiRODSProxyAdminAcctConfig()
+    public IRODSProxyAdminAccountConfig getIRODSProxyAdminAcctConfig()
     {
         return iRODSProxyAdminAcctConfig_;
     }

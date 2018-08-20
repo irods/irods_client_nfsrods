@@ -1,16 +1,16 @@
 package org.irods.jargon.nfs.vfs;
 
 import java.util.Map;
-
 import javax.security.auth.Subject;
+import javax.security.auth.kerberos.KerberosPrincipal;
+import org.ietf.jgss.GSSContext;
+import org.ietf.jgss.GSSException;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.dcache.auth.Subjects;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.oncrpc4j.rpc.RpcLoginService;
 import org.dcache.oncrpc4j.rpc.RpcTransport;
-import org.ietf.jgss.GSSContext;
-import org.ietf.jgss.GSSException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,51 +84,35 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
     {
         try
         {
-            // enable getting cred delegation
-            log_.debug("GSSC Name: " + _gssCtx.getSrcName().toString());
             String principal = _gssCtx.getSrcName().toString();
+            Integer rodsUserID = principleUidMap_.get(principal);
 
-            // if principal doesnt exist in mapping
-            if (principleUidMap_.get(principal) == null)
+            printPrincipalType(principal);
+
+            if (rodsUserID == null)
             {
-                // get user ID of principal
-                String userName = "";
+                String userName = null;
 
-                log_.debug("Substring of principal[0,4]: " + principal.substring(0, 4));
-
-                // if it is service
-                if (principal.substring(0, 4).equals("nfs/"))
+                // If the principal represents a service.
+                if (principal != null && principal.startsWith("nfs/"))
                 {
-                    // userID = _irods.getUserAO(_irodsAcct).findByName(_irodsAdmin).getId();
-                    // TODO: Save as admin
-                    userName = "rods";
-                    log_.debug("[IrodsIdMap] in service if statement");
+                    userName = config_.getIRODSProxyAdminAcctConfig().getUsername();
                 }
                 else
                 {
-                    // parse principal
-                    String[] parts = principal.split("@");
-                    userName = parts[0];
-                    log_.debug("[IrodsIdMap] in user if statement");
+                    //KerberosPrincipal kp = new KerberosPrincipal(principal);
+                    //userName = kp.getName();
+                    userName = principal.substring(0, principal.indexOf('@'));
+                    log_.debug("IRODSIdMap :: userName = {}", userName);
                 }
 
-                // create User Object
-                IRODSUser user = new IRODSUser(userName);
-
-                // Save <Principle, Uid>
-                principleUidMap_.put(principal, user.getUserID());
-                log_.debug("principleUidMap Principal: " + principal + "    ID: " + principleUidMap_.get(principal));
-
-                // save user Object to user ID
-                irodsPrincipleMap_.put(user.getUserID(), user);
-                log_.debug("irodsPrincipleMap ID: " + user.getUserID() + "    User: "
-                    + irodsPrincipleMap_.get(user.getUserID()).toString());
-
-                // createIrodsAccountInstance(new Integer(userName));
+                IRODSUser user = new IRODSUser(userName, config_);
+                rodsUserID = user.getUserID();
+                principleUidMap_.put(principal, rodsUserID);
+                irodsPrincipleMap_.put(rodsUserID, user);
             }
 
-            // return id mapping
-            return Subjects.of(principleUidMap_.get(principal), principleUidMap_.get(principal));
+            return Subjects.of(rodsUserID, rodsUserID);
         }
         catch (GSSException e)
         {
@@ -144,4 +128,42 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
         return irodsPrincipleMap_.get(Integer.valueOf(_userID));
     }
 
+    private void printPrincipalType(String _principal)
+    {
+        try
+        {
+            KerberosPrincipal kp = new KerberosPrincipal(_principal);
+
+            switch (kp.getNameType())
+            {
+                case KerberosPrincipal.KRB_NT_PRINCIPAL:
+                    log_.debug("Principal Type for [{}] = KRB_NT_PRINCIPAL", _principal);
+                    break;
+
+                case KerberosPrincipal.KRB_NT_SRV_HST:
+                    log_.debug("Principal Type for [{}] = KRB_NT_SRV_HST", _principal);
+                    break;
+
+                case KerberosPrincipal.KRB_NT_SRV_INST:
+                    log_.debug("Principal Type for [{}] = KRB_NT_SRV_INST", _principal);
+                    break;
+
+                case KerberosPrincipal.KRB_NT_SRV_XHST:
+                    log_.debug("Principal Type for [{}] = KRB_NT_SRV_XHST", _principal);
+                    break;
+
+                case KerberosPrincipal.KRB_NT_UID:
+                    log_.debug("Principal Type for [{}] = KRB_NT_UID", _principal);
+                    break;
+
+                case KerberosPrincipal.KRB_NT_UNKNOWN:
+                    log_.debug("Principal Type for [{}] = KRB_NT_UNKNOWN", _principal);
+                    break;
+            }
+        }
+        catch (IllegalArgumentException e)
+        {
+            log_.error(e.getMessage());
+        }
+    }
 }

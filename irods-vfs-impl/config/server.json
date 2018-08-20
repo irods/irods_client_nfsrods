@@ -12,7 +12,8 @@
     irods_server: {
         zone: "tempZone",
         host: "kdd-ws",
-        port: 1247
+        port: 1247,
+        default_resource: "demoResc"
     },
 
     irods_proxy_admin_account: {

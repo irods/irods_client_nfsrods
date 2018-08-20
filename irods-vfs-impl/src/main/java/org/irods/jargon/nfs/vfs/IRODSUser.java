@@ -20,49 +20,48 @@ public class IRODSUser
 {
     private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMap.class);
 
-    private NonBlockingHashMap<Long, Path> inodeToPath_; // Used to be NonBlockingHashMapLong<Path>
-    private NonBlockingHashMap<Path, Long> pathToInode_; // Used to be NonBlockingHashMap<Path, Long>
-    private AtomicLong fileID_; // Used to be AtomicLong
+    private NonBlockingHashMap<Long, Path> inodeToPath_;
+    private NonBlockingHashMap<Path, Long> pathToInode_;
+    private AtomicLong fileID_;
     private IRODSAccessObjectFactory factory_;
     private IRODSAccount proxiedAcct_;
     private IRODSFile rootFile_;
     private int userID_;
 
-    public IRODSUser(String _username)
+    public IRODSUser(String _username, ServerConfig _config)
     {
         inodeToPath_ = new NonBlockingHashMap<>();
         pathToInode_ = new NonBlockingHashMap<>();
-        fileID_ = new AtomicLong(1); // numbering starts at 1
+        fileID_ = new AtomicLong(1); // Inode numbers start at 1
 
-        // TODO: Export rods config data to config.java file
-        String adminAcct = "rods";
-        String adminPw = "rods";
-        String userzone = "tempZone";
+        NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
+        IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
+        IRODSServerConfig rodsSvrConfig = _config.getIRODSServerConfig();
 
-        String zonePath = "/" + userzone + "/home/" + _username;
+        String adminAcct = proxyConfig.getUsername();
+        String adminPw = proxyConfig.getPassword();
+        String zone = rodsSvrConfig.getZone();
+
+        String rootPath = Paths.get(nfsSvrConfig.getIRODSMountPoint()).toString();
+        log_.debug("IRODSUser :: iRODS mount point = {}", rootPath);
         log_.debug("IRODSUser :: Creating proxy for username [{}] ...", _username);
 
         try
         {
-            // Create Irods Account instance for user and bind to associated globals
-            proxiedAcct_ = IRODSAccount.instanceWithProxy("localhost", 1247, _username, adminPw, zonePath, userzone,
-                                                          "demoResc", adminAcct, userzone);
+            proxiedAcct_ = IRODSAccount.instanceWithProxy(rodsSvrConfig.getHost(), rodsSvrConfig.getPort(), _username, adminPw, rootPath, zone, rodsSvrConfig.getDefaultResource(), adminAcct, zone);
             IRODSFileSystem fs = IRODSFileSystem.instance();
             factory_ = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
-            rootFile_ = factory_.getIRODSFileFactory(proxiedAcct_).instanceIRODSFile(zonePath);
+            rootFile_ = factory_.getIRODSFileFactory(proxiedAcct_).instanceIRODSFile(rootPath);
 
-            // faster to save userID once then contact jargon on repeat getUserID() calls
-            // User user = irodsAOFactory_.getUserAO(proxiedAcct_).findByName(proxiedAcct_.getUserName());
             User user = factory_.getUserAO(proxiedAcct_).findByName(_username);
             userID_ = Integer.parseInt(user.getId());
 
+            establishRoot();
         }
         catch (JargonException e)
         {
             log_.error(e.getMessage());
         }
-
-        establishRoot();
     }
 
     public int getUserID()
@@ -80,25 +79,15 @@ public class IRODSUser
         return inodeToPath_;
     }
 
-    // public void setInodeToPath(NonBlockingHashMapLong<Path> inodeToPath)
-    // {
-    // this.inodeToPath_ = inodeToPath;
-    // }
-
     public NonBlockingHashMap<Path, Long> getPathToInode()
     {
         return pathToInode_;
     }
 
-    // public void setPathToInode(NonBlockingHashMap<Path, Long> pathToInode)
-    // {
-    // this.pathToInode_ = pathToInode;
-    // }
-
-     public Long getAndIncFileID()
-     {
-     return fileID_.getAndIncrement();
-     }
+    public Long getAndIncFileID()
+    {
+        return fileID_.getAndIncrement();
+    }
 
     public IRODSAccessObjectFactory getIRODSAccessObjectFactory()
     {
@@ -140,16 +129,13 @@ public class IRODSUser
 
             log_.debug("mapping root...");
 
-            // map(fileID_.getAndIncrement(), rootFile_.getAbsolutePath()); // so root is always inode #1
-            map(getAndIncFileID(), rootFile_.getAbsolutePath()); // so root is always inode #1
+            map(getAndIncFileID(), rootFile_.getAbsolutePath());
         }
         finally
         {
             factory_.closeSessionAndEatExceptions();
         }
     }
-
-    /** Mapping **/
 
     public void map(Long inodeNumber, String irodsPath)
     {
@@ -201,7 +187,7 @@ public class IRODSUser
     @Override
     public String toString()
     {
-        return "IRODSUser{" + "rootAccount=" + proxiedAcct_ + ", userID=" + userID_ + '}';
+        return "IRODSUser{rootAccount=" + proxiedAcct_ + ", userID=" + userID_ + '}';
     }
 
 }

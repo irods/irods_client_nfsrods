@@ -35,7 +35,7 @@ public class NFSServerConfig
     }
 
     @JsonIgnore
-    public String getiRODSMountPoint()
+    public String getIRODSMountPoint()
     {
         return iRODSMntPoint_;
     }
