@@ -48,7 +48,9 @@ public class IRODSUser
 
         try
         {
-            proxiedAcct_ = IRODSAccount.instanceWithProxy(rodsSvrConfig.getHost(), rodsSvrConfig.getPort(), _username, adminPw, rootPath, zone, rodsSvrConfig.getDefaultResource(), adminAcct, zone);
+            proxiedAcct_ = IRODSAccount.instanceWithProxy(rodsSvrConfig.getHost(), rodsSvrConfig.getPort(), _username,
+                                                          adminPw, rootPath, zone, rodsSvrConfig.getDefaultResource(),
+                                                          adminAcct, zone);
             IRODSFileSystem fs = IRODSFileSystem.instance();
             factory_ = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
             rootFile_ = factory_.getIRODSFileFactory(proxiedAcct_).instanceIRODSFile(rootPath);

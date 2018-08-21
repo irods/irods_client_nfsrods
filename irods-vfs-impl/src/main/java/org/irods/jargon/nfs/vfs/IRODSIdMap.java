@@ -25,9 +25,9 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
     private static final int DEFAULT_GID = 1001;
 
     private final ServerConfig config_;
-    private /*static*/ Map<String, Integer> principleUidMap_ = new NonBlockingHashMap<>();
-    private /*static*/ Map<Integer, IRODSUser> irodsPrincipleMap_ = new NonBlockingHashMap<>();
-    
+    private Map<String, Integer> principleUidMap_ = new NonBlockingHashMap<>();
+    private Map<Integer, IRODSUser> irodsPrincipleMap_ = new NonBlockingHashMap<>();
+
     public IRODSIdMap(ServerConfig _config)
     {
         config_ = _config;
@@ -100,8 +100,8 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
                 }
                 else
                 {
-                    //KerberosPrincipal kp = new KerberosPrincipal(principal);
-                    //userName = kp.getName();
+                    // KerberosPrincipal kp = new KerberosPrincipal(principal);
+                    // userName = kp.getName();
                     userName = principal.substring(0, principal.indexOf('@'));
                     log_.debug("IRODSIdMap :: userName = {}", userName);
                 }

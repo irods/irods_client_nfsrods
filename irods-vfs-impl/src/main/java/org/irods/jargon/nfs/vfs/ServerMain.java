@@ -33,11 +33,10 @@ public class ServerMain
 
     public static void main(String[] args) throws JargonException, IOException, GSSException, NoSuchAlgorithmException
     {
-
         ServerConfig config = JSONUtils.fromJSON(new File(NFSRODS_HOME + "/config/server.json"), ServerConfig.class);
-        
+
         log_.debug("main :: server config ==> {}", JSONUtils.toJSON(config));
-        
+
         NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
 
         IRODSIdMap idMapper = new IRODSIdMap(config);
