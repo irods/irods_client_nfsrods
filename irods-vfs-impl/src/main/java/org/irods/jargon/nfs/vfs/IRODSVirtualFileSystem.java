@@ -355,7 +355,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 return toFh(newInodeNumber);
             }
 
-            // It is VERY important that this exception thrown.
+            // It is VERY important that this exception is thrown here.
             // It affects how NFS4J continues processing the request.
             throw new NoEntException("Path does not exist.");
         }
