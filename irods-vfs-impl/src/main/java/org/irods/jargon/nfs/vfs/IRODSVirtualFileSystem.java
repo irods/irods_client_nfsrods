@@ -410,18 +410,17 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             Path parentPath = resolveInode(getInodeNumber(_inode));
             Path destPath = resolveInode(getInodeNumber(_dest));
-            IRODSUser user = getCurrentIRODSUser();
 
             // create IRODSFile for file to move
             String irodsParentPath = parentPath.toString() + "/" + _oldName;
+            log_.debug("vfs::move - parent path = {}", irodsParentPath);
 
-            log_.debug("parent path = {}", irodsParentPath);
-
-            IRODSFile pathFile = user.getIRODSAccessObjectFactory().getIRODSFileFactory(user.getRootAccount())
-                .instanceIRODSFile(irodsParentPath);
+            IRODSUser user = getCurrentIRODSUser();
+            IRODSAccessObjectFactory aof = user.getIRODSAccessObjectFactory();
+            IRODSFile pathFile = aof.getIRODSFileFactory(user.getRootAccount()).instanceIRODSFile(irodsParentPath);
 
             // create empty destination file object
-            String destPathString = "";
+            String destPathString;
 
             // make path string for destination based on if rename occurs
             if (_newName != null && !_oldName.equals(_newName))
@@ -436,16 +435,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             log_.debug("vfs::move - destination path = {}", destPathString);
 
             // create irods destination file object
-            IRODSFile destFile = user.getIRODSAccessObjectFactory().getIRODSFileFactory(user.getRootAccount())
-                .instanceIRODSFile(destPathString);
+            IRODSFile destFile = aof.getIRODSFileFactory(user.getRootAccount()).instanceIRODSFile(destPathString);
 
             // get file system controls
-            IRODSFileSystemAO fileSystemAO = user.getIRODSAccessObjectFactory().getIRODSFileSystemAO(user
-                .getRootAccount());
+            IRODSFileSystemAO fileSystemAO = aof.getIRODSFileSystemAO(user.getRootAccount());
 
             log_.debug("vfs::move - is file? " + pathFile.isFile());
 
-            // check if file or directory and run appropriate commands
             if (pathFile.isFile())
             {
                 fileSystemAO.renameFile(pathFile, destFile);
