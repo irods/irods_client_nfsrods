@@ -1,8 +1,6 @@
 package org.irods.jargon.nfs.vfs;
 
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessController;
@@ -11,11 +9,7 @@ import java.util.List;
 
 import javax.security.auth.Subject;
 
-import org.dcache.nfs.status.ExistException;
 import org.dcache.nfs.status.NoEntException;
-import org.dcache.nfs.status.NotSuppException;
-import org.dcache.nfs.status.PermException;
-import org.dcache.nfs.status.ServerFaultException;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.nfs.v4.xdr.nfsace4;
 import org.dcache.nfs.vfs.AclCheckable;
@@ -49,8 +43,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.primitives.Longs;
 
-import jline.internal.Log;
-
 public class IRODSVirtualFileSystem implements VirtualFileSystem
 {
     private static final Logger log_ = LoggerFactory.getLogger(IRODSVirtualFileSystem.class);
@@ -82,8 +74,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
 
         idMapper_ = _idMapper;
-
-        Log.info("IdMapping: " + idMapper_.toString());
     }
 
     /**
@@ -103,70 +93,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public int access(Inode _inode, int _mode) throws IOException
     {
         log_.debug("vfs::access");
-
-        log_.debug("_mode (int) = {}", _mode);
-        log_.debug("_mode       = {}", Stat.modeToString(_mode));
+        log_.debug("vfs::access - _mode (octal) = {}", Integer.toOctalString(_mode));
+        log_.debug("vfs::access - _mode         = {}", Stat.modeToString(_mode));
 
         return _mode;
-
-        // long inodeNumber = getInodeNumber(_inode);
-        // Path path = resolveInode(inodeNumber);
-        //
-        // log_.debug("path = {}", path);
-        //
-        // Stat stat = statPath(path, inodeNumber);
-        //
-        // log_.debug("stat mode (int) = {}", stat.getMode());
-        // log_.debug("stat mode = {}", Stat.modeToString(stat.getMode()));
-        //
-        // return stat.getMode();
-
-        /*
-         * if (true) { // TODO Should 'mode' be returned? // return mode;
-         * 
-         * // TODO Should the mode from stat be returned instead? // Either one appears
-         * to work. long inodeNumber = getInodeNumber(inode); Path path =
-         * resolveInode(inodeNumber); log.debug("path = {}", path); Stat stat =
-         * statPath(path, inodeNumber); log.debug("correct mode (int) = {}",
-         * stat.getMode()); log.debug("correct mode       = {}",
-         * Stat.modeToString(stat.getMode())); return stat.getMode(); }
-         * 
-         * 
-         * if (inode == null) { throw new IllegalArgumentException("null inode"); }
-         * 
-         * long inodeNumber = getInodeNumber(inode); // Throws NoEntException if not
-         * resolved... Path path = resolveInode(inodeNumber);
-         * 
-         * log.debug("path: {}", path);
-         * 
-         * int returnMode = 0; try { IRODSFile pathFile =
-         * irodsAccessObjectFactory.getIRODSFileFactory(resolveIrodsAccount())
-         * .instanceIRODSFile(path.toString());
-         * 
-         * if (PermissionBitmaskUtils.isUserExecuteSet(mode)) {
-         * log.debug("check user exec"); if (pathFile.canExecute()) {
-         * log.debug("determine user can execute"); returnMode =
-         * PermissionBitmaskUtils.turnOnUserExecute(returnMode); } }
-         * 
-         * boolean canWrite = false; if (PermissionBitmaskUtils.isUserWriteSet(mode)) {
-         * log.debug("checking user write"); canWrite = pathFile.canWrite(); if
-         * (canWrite) { log.debug("determine user can write"); returnMode =
-         * PermissionBitmaskUtils.turnOnUserWrite(returnMode); } }
-         * 
-         * if (PermissionBitmaskUtils.isUserReadSet(mode)) {
-         * log.debug("check user read"); if (canWrite) {
-         * log.debug("user already determined to have write"); returnMode =
-         * PermissionBitmaskUtils.turnOnUserRead(returnMode); } else if
-         * (pathFile.canRead()) { log.debug("user can read"); returnMode =
-         * PermissionBitmaskUtils.turnOnUserRead(returnMode); } }
-         * 
-         * log.debug("finished!"); return returnMode;
-         * 
-         * } catch (JargonException e) {
-         * log.error("exception getting access for path:{}", path, e); throw new
-         * IOException(e); } finally {
-         * irodsAccessObjectFactory.closeSessionAndEatExceptions(); }
-         */
     }
 
     /**
@@ -185,7 +115,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public void commit(Inode _inode, long _offset, int _count) throws IOException
     {
         log_.debug("vfs::commit");
-        log_.debug("commit() is right now a noop, need to think about it");
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /**
@@ -231,11 +161,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
         IRODSUser user = getCurrentIRODSUser();
 
-        log_.debug("vfs::create - parent  = {}", _parent);
-        log_.debug("vfs::create - type    = {}", _type);
-        log_.debug("vfs::create - name    = {}", _name);
-        log_.debug("vfs::create - subject = {}", _subject);
-        log_.debug("vfs::create - mode    = {}", Stat.modeToString(_mode));
+        log_.debug("vfs::create - _parent  = {}", _parent);
+        log_.debug("vfs::create - _type    = {}", _type);
+        log_.debug("vfs::create - _name    = {}", _name);
+        log_.debug("vfs::create - _subject = {}", _subject);
+        log_.debug("vfs::create - _mode    = {}", Stat.modeToString(_mode));
 
         long parentInodeNumber = getInodeNumber(_parent);
         Path parentPath = resolveInode(parentInodeNumber);
@@ -250,7 +180,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             log_.debug("vfs::create - creating new file at: {}", newFile);
 
             newFile.createNewFile();
-            long newInodeNumber = user.getAndIncFileID();
+            long newInodeNumber = user.getAndIncrementFileID();
             user.map(newInodeNumber, newPath);
 
             return toFh(newInodeNumber);
@@ -288,12 +218,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public FsStat getFsStat() throws IOException
     {
         log_.debug("vfs::getFsStat");
-        // IRODSUser user = resolveIRODSUser(getUserID());
-        // FileStore store = Files.getFileStore(Paths.get(user.getAbsolutePath()));
-        // long total = store.getTotalSpace();
-        // long free = store.getUsableSpace();
-        // return new FsStat(total, Long.MAX_VALUE, total - free, user.getPathToInode().size());
-        return null;
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
@@ -310,11 +235,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         return toFh(1);
     }
 
-    private Inode toFh(long _inodeNumber)
-    {
-        return Inode.forFile(Longs.toByteArray(_inodeNumber));
-    }
-
     /**
      * Get file system object's attributes.
      *
@@ -329,8 +249,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         log_.debug("vfs::getattr");
         long inodeNumber = getInodeNumber(_inode);
         Path path = resolveInode(inodeNumber);
-        log_.debug("vfs::getattr - inode number = {}", inodeNumber);
-        log_.debug("vfs::getattr - path         = {}", path);
         return statPath(path, inodeNumber);
     }
 
@@ -338,7 +256,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public boolean hasIOLayout(Inode _inode) throws IOException
     {
         log_.debug("vfs::hasIOLayout");
-        System.out.println("hasIOLayout: " + _inode.toString());
         return false;
     }
 
@@ -346,42 +263,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public Inode link(Inode _parent, Inode _existing, String _target, Subject _subject) throws IOException
     {
         log_.debug("vfs::link");
-
-        long parentInodeNumber = getInodeNumber(_parent);
-        Path parentPath = resolveInode(parentInodeNumber);
-
-        long existingInodeNumber = getInodeNumber(_existing);
-        Path existingPath = resolveInode(existingInodeNumber);
-
-        Path targetPath = parentPath.resolve(_target);
-
-        try
-        {
-            Files.createLink(targetPath, existingPath);
-        }
-        catch (UnsupportedOperationException e)
-        {
-            throw new NotSuppException("Not supported", e);
-        }
-        catch (FileAlreadyExistsException e)
-        {
-            throw new ExistException("Path exists " + _target, e);
-        }
-        catch (SecurityException e)
-        {
-            throw new PermException("Permission denied: " + e.getMessage(), e);
-        }
-        catch (IOException e)
-        {
-            throw new ServerFaultException("Failed to create: " + e.getMessage(), e);
-        }
-
-        IRODSUser user = getCurrentIRODSUser();
-
-        long newInodeNumber = user.getAndIncFileID();
-        user.map(newInodeNumber, targetPath);
-
-        return toFh(newInodeNumber);
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
@@ -397,35 +279,35 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             CollectionAndDataObjectListAndSearchAO listAO = user.getIRODSAccessObjectFactory()
                 .getCollectionAndDataObjectListAndSearchAO(user.getRootAccount());
 
-            // get collection listing from root node
             Path parentPath = resolveInode(getInodeNumber(_inode));
-            log_.debug("vfs::list - list contents of [{}] ...", parentPath);
+            log_.debug("vfs::list - listing contents of [{}] ...", parentPath);
 
             String irodsAbsPath = parentPath.normalize().toString();
 
             List<CollectionAndDataObjectListingEntry> entries;
             entries = listAO.listDataObjectsAndCollectionsUnderPath(irodsAbsPath);
 
-            for (CollectionAndDataObjectListingEntry dataObj : entries)
+            for (int i = 0; i < entries.size(); ++i)
             {
+                CollectionAndDataObjectListingEntry dataObj = entries.get(i);
                 Path filePath = parentPath.resolve(dataObj.getPathOrName());
                 long inodeNumber;
 
                 log_.debug("vfs::list - entry = {}", filePath);
 
-                if (user.getInodeToPath().containsValue(filePath))
+                if (user.getInodeToPathMap().containsValue(filePath))
                 {
                     inodeNumber = resolvePath(filePath);
                 }
                 else
                 {
-                    inodeNumber = user.getAndIncFileID();
+                    inodeNumber = user.getAndIncrementFileID();
                     user.map(inodeNumber, filePath);
                 }
 
                 Stat stat = statPath(filePath, inodeNumber);
                 Inode inode = toFh(inodeNumber);
-                list.add(new DirectoryEntry(filePath.getFileName().toString(), inode, stat, inodeNumber));
+                list.add(new DirectoryEntry(filePath.getFileName().toString(), inode, stat, i));
             }
         }
         catch (JargonException e)
@@ -436,30 +318,51 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         return new DirectoryStream(list);
     }
 
-    private long resolvePath(Path _path) throws NoEntException
-    {
-        IRODSUser user = getCurrentIRODSUser();
-        Long inodeNumber = user.getPathToInode().get(_path);
-
-        if (inodeNumber == null)
-        {
-            throw new NoEntException("path " + _path);
-        }
-
-        return inodeNumber;
-    }
-
     @Override
     public Inode lookup(Inode _parent, String _path) throws IOException
     {
         log_.debug("vfs::lookup");
 
         Path parentPath = resolveInode(getInodeNumber(_parent));
-        Path filePath = parentPath.resolve(_path);
+        Path targetPath = parentPath.normalize().resolve(_path);
 
-        log_.debug("looking up [{}] ...", filePath);
+        log_.debug("vfs::lookup - looking up [{}] ...", targetPath);
 
-        return toFh(resolvePath(filePath));
+        // Handle paths that include collections/files that have not been mapped yet.
+        IRODSUser user = getCurrentIRODSUser();
+
+        if (user.getPathToInodeMap().containsKey(targetPath))
+            return toFh(resolvePath(targetPath));
+
+        // The path has not been seen before.
+        // Create a new inode number and map it to the target path if and only
+        // if the target path is a valid path in iRODS.
+
+        try
+        {
+            CollectionAndDataObjectListAndSearchAO lao = user.getIRODSAccessObjectFactory()
+                .getCollectionAndDataObjectListAndSearchAO(user.getRootAccount());
+
+            // @formatter:off
+            boolean isTargetValid = lao.listDataObjectsAndCollectionsUnderPath(parentPath.toString())
+                .stream().anyMatch(_obj -> targetPath.toString().equals(_obj.getPathOrName()));
+            // @formatter:on
+            
+            if (isTargetValid)
+            {
+                long newInodeNumber = user.getAndIncrementFileID();
+                user.map(newInodeNumber, targetPath);
+                return toFh(newInodeNumber);
+            }
+        
+            // It is VERY important that this exception thrown.
+            // It affects how NFS4J continues processing the request.
+            throw new NoEntException("Path does not exist.");
+        }
+        catch (JargonException e)
+        {
+            throw new IOException(e);
+        }
     }
 
     @Override
@@ -476,12 +379,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 .instanceIRODSFile(parentPath.toString(), _path);
 
             log_.debug("vfs::mkdir - inode map (before creating new directory) = {}", mapper_.writeValueAsString(user
-                .getInodeToPath()));
+                .getInodeToPathMap()));
             log_.debug("vfs::mkdir - new directory path = {}", irodsFile.getAbsolutePath());
 
             irodsFile.mkdir();
 
-            long inodeNumber = user.getAndIncFileID();
+            long inodeNumber = user.getAndIncrementFileID();
             log_.debug("vfs::mkdir - new inode number = {}", inodeNumber);
 
             user.map(inodeNumber, irodsFile.getAbsolutePath());
@@ -559,9 +462,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
             log_.debug("vfs::move - old path     = {}" + oldPath);
             log_.debug("vfs::move - new path     = {}" + newPath);
-            log_.debug("vfs::move - inode number = {}" + user.getPathToInode().get(oldPath));
+            log_.debug("vfs::move - inode number = {}" + user.getPathToInodeMap().get(oldPath));
 
-            user.remap(user.getPathToInode().get(oldPath), oldPath, newPath);
+            user.remap(user.getPathToInodeMap().get(oldPath), oldPath, newPath);
 
             return true;
         }
@@ -610,7 +513,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public String readlink(Inode _inode) throws IOException
     {
         log_.debug("vfs::readlink");
-        return null;
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
@@ -660,7 +563,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         throws IOException
     {
         log_.debug("vfs::symlink");
-        return null;
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
@@ -693,27 +596,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     }
 
     /**
-     * Get the iRODS absolute path given the inode number
-     * 
-     * @param _inodeNumber
-     *            <code>long</code> with the inode number
-     * @return {@link Path} that is the inode
-     * @throws NoEntException
-     */
-    private Path resolveInode(long _inodeNumber) throws NoEntException
-    {
-        IRODSUser user = getCurrentIRODSUser();
-        Path path = user.getInodeToPath().get(_inodeNumber);
-
-        if (path == null)
-        {
-            throw new NoEntException("inode #" + _inodeNumber);
-        }
-
-        return path;
-    }
-
-    /**
      * Get a stat relating to the given file path and inode number
      * 
      * @param _path
@@ -726,8 +608,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     private Stat statPath(Path _path, long _inodeNumber) throws IOException
     {
         log_.debug("vfs::statPath");
-        log_.debug("vfs::statPath - inode number = {}", _inodeNumber);
-        log_.debug("vfs::statPath - path         = {}", _path);
+        log_.debug("vfs::statPath - _inodeNumber      = {}", _inodeNumber);
+        log_.debug("vfs::statPath - _path             = {}", _path);
 
         if (_path == null)
         {
@@ -735,7 +617,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
 
         String path = _path.normalize().toString();
-        log_.debug("vfs::statPath - absolute path =  {}", path);
+        log_.debug("vfs::statPath - path (normalized) = {}", path);
 
         try
         {
@@ -780,6 +662,45 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             throw new IOException(e);
         }
+    }
+
+    private Inode toFh(long _inodeNumber)
+    {
+        return Inode.forFile(Longs.toByteArray(_inodeNumber));
+    }
+
+    /**
+     * Get the iRODS absolute path given the inode number
+     * 
+     * @param _inodeNumber
+     *            <code>long</code> with the inode number
+     * @return {@link Path} that is the inode
+     * @throws NoEntException
+     */
+    private Path resolveInode(long _inodeNumber) throws NoEntException
+    {
+        IRODSUser user = getCurrentIRODSUser();
+        Path path = user.getInodeToPathMap().get(_inodeNumber);
+
+        if (path == null)
+        {
+            throw new NoEntException("inode number = " + _inodeNumber);
+        }
+
+        return path;
+    }
+
+    private long resolvePath(Path _path) throws NoEntException
+    {
+        IRODSUser user = getCurrentIRODSUser();
+        Long inodeNumber = user.getPathToInodeMap().get(_path);
+
+        if (inodeNumber == null)
+        {
+            throw new NoEntException("path " + _path);
+        }
+
+        return inodeNumber;
     }
 
     private static void setStatMode(String _path, Stat _stat, ObjectType _objType, IRODSUser _user)
@@ -838,7 +759,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 case OWN:     mode |= (r | w | x); break;
                 case READ:    mode |= r; break;
                 case WRITE:   mode |= w; break;
-                case EXECUTE: mode |= x; break;
                 default:
                 // @formatter:on
             }
@@ -863,5 +783,4 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         String name = subject.getPrincipals().iterator().next().getName();
         return Integer.parseInt(name);
     }
-
 }

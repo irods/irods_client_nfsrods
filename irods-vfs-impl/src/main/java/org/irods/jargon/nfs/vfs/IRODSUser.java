@@ -76,17 +76,17 @@ public class IRODSUser
         return rootFile_.getAbsolutePath();
     }
 
-    public NonBlockingHashMap<Long, Path> getInodeToPath()
+    public NonBlockingHashMap<Long, Path> getInodeToPathMap()
     {
         return inodeToPath_;
     }
 
-    public NonBlockingHashMap<Path, Long> getPathToInode()
+    public NonBlockingHashMap<Path, Long> getPathToInodeMap()
     {
         return pathToInode_;
     }
 
-    public Long getAndIncFileID()
+    public Long getAndIncrementFileID()
     {
         return fileID_.getAndIncrement();
     }
@@ -131,7 +131,7 @@ public class IRODSUser
 
             log_.debug("mapping root...");
 
-            map(getAndIncFileID(), rootFile_.getAbsolutePath());
+            map(getAndIncrementFileID(), rootFile_.getAbsolutePath());
         }
         finally
         {
