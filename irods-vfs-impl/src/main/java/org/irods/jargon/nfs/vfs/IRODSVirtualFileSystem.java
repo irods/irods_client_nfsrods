@@ -347,14 +347,14 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             boolean isTargetValid = lao.listDataObjectsAndCollectionsUnderPath(parentPath.toString())
                 .stream().anyMatch(_obj -> targetPath.toString().equals(_obj.getPathOrName()));
             // @formatter:on
-            
+
             if (isTargetValid)
             {
                 long newInodeNumber = user.getAndIncrementFileID();
                 user.map(newInodeNumber, targetPath);
                 return toFh(newInodeNumber);
             }
-        
+
             // It is VERY important that this exception thrown.
             // It affects how NFS4J continues processing the request.
             throw new NoEntException("Path does not exist.");
