@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessController;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.security.auth.Subject;
@@ -202,6 +203,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public nfsace4[] getAcl(Inode _inode) throws IOException
     {
         log_.debug("vfs::getAcl");
+        log_.debug("vfs::getAcl - _inode = {}", resolveInode(getInodeNumber(_inode)));
         // info on nfsace4:
         // https://www.ibm.com/support/knowledgecenter/en/ssw_aix_61/com.ibm.aix.osdevice/acl_type_nfs4.htm
         return new nfsace4[0]; // TODO: this is same in local need to look at what nfsace4 is composed of
@@ -247,6 +249,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public Stat getattr(Inode _inode) throws IOException
     {
         log_.debug("vfs::getattr");
+        log_.debug("vfs::getattr - _inode = {}", resolveInode(getInodeNumber(_inode)));
         long inodeNumber = getInodeNumber(_inode);
         Path path = resolveInode(inodeNumber);
         return statPath(path, inodeNumber);
@@ -270,8 +273,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public DirectoryStream list(Inode _inode, byte[] _verifier, long _cookie) throws IOException
     {
         log_.debug("vfs::list");
-
-        final List<DirectoryEntry> list = new ArrayList<>();
+        
+        List<DirectoryEntry> list = new ArrayList<>();
 
         try
         {
@@ -286,14 +289,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
             List<CollectionAndDataObjectListingEntry> entries;
             entries = listAO.listDataObjectsAndCollectionsUnderPath(irodsAbsPath);
-
-            for (int i = 0; i < entries.size(); ++i)
+            
+            for (CollectionAndDataObjectListingEntry dataObj : entries)
             {
-                CollectionAndDataObjectListingEntry dataObj = entries.get(i);
                 Path filePath = parentPath.resolve(dataObj.getPathOrName());
-                long inodeNumber;
-
                 log_.debug("vfs::list - entry = {}", filePath);
+
+                long inodeNumber;
 
                 if (user.getInodeToPathMap().containsValue(filePath))
                 {
@@ -307,7 +309,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
                 Stat stat = statPath(filePath, inodeNumber);
                 Inode inode = toFh(inodeNumber);
-                list.add(new DirectoryEntry(filePath.getFileName().toString(), inode, stat, i));
+                list.add(new DirectoryEntry(filePath.getFileName().toString(), inode, stat, list.size()));
             }
         }
         catch (JargonException e)
@@ -322,6 +324,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public Inode lookup(Inode _parent, String _path) throws IOException
     {
         log_.debug("vfs::lookup");
+        log_.debug("vfs::lookup - _parent = {}", resolveInode(getInodeNumber(_parent)));
+        log_.debug("vfs::lookup - _path   = {}", _path);
 
         Path parentPath = resolveInode(getInodeNumber(_parent));
         Path targetPath = parentPath.normalize().resolve(_path);
@@ -345,7 +349,14 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
             // @formatter:off
             boolean isTargetValid = lao.listDataObjectsAndCollectionsUnderPath(parentPath.toString())
-                .stream().anyMatch(_obj -> targetPath.toString().equals(_obj.getPathOrName()));
+                .stream().anyMatch(obj -> {
+                    if (obj.isCollection())
+                    {
+                        return targetPath.toString().equals(obj.getPathOrName());
+                    }
+
+                    return _path.equals(obj.getPathOrName());
+                });
             // @formatter:on
 
             if (isTargetValid)
@@ -354,7 +365,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 user.map(newInodeNumber, targetPath);
                 return toFh(newInodeNumber);
             }
-
+            
             // It is VERY important that this exception is thrown here.
             // It affects how NFS4J continues processing the request.
             throw new NoEntException("Path does not exist.");
@@ -544,13 +555,16 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public void setAcl(Inode _inode, nfsace4[] _acl) throws IOException
     {
         log_.debug("vfs::setAcl");
-        // NOP
+        log_.debug("vfs::setAcl - _inode = {}", resolveInode(getInodeNumber(_inode)));
+        log_.debug("vfs::setAcl - _acl   = {}", Arrays.asList(_acl));
     }
 
     @Override
     public void setattr(Inode _inode, Stat _stat) throws IOException
     {
         log_.debug("vfs::setattr");
+        log_.debug("vfs::setattr - _inode = {}", resolveInode(getInodeNumber(_inode)));
+        log_.debug("vfs::setattr - _stat  = {}", _stat);
         // Not sure if this needs to be implemented.
     }
 
@@ -693,7 +707,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
         if (inodeNumber == null)
         {
-            throw new NoEntException("path " + _path);
+            throw new NoEntException("Path does not exist [" + _path + "].");
         }
 
         return inodeNumber;
@@ -708,14 +722,14 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             case COLLECTION:
                 CollectionAO coa = aof.getCollectionAO(_user.getRootAccount());
-                _stat.setMode(Stat.S_IFDIR | makeMode(coa.listPermissionsForCollection(_path)));
+                _stat.setMode(Stat.S_IFDIR | calcMode(coa.listPermissionsForCollection(_path)));
                 break;
 
             case DATA_OBJECT:
                 DataObjectAO doa = aof.getDataObjectAO(_user.getRootAccount());
                 // ~0111 is needed to unset the execute bits. The parentheses aren't needed
                 // really, but they help to emphasize what bits we are interested in.
-                _stat.setMode(Stat.S_IFREG | (~0111 & makeMode(doa.listPermissionsForDataObject(_path))));
+                _stat.setMode(Stat.S_IFREG | (~0111 & calcMode(doa.listPermissionsForDataObject(_path))));
                 break;
 
             // This is required when the iRODS mount point is NOT set to the client's
@@ -737,13 +751,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
     }
 
-    private static int makeMode(List<UserFilePermission> _perms)
+    private static int calcMode(List<UserFilePermission> _perms)
     {
         // Permissions are only set for the user and world.
         // TODO Groups will need investigation.
-        final int r = 0444; // Read bit
-        final int w = 0222; // Write bit
-        final int x = 0111; // Execute bit
+        final int r = 0400; // Read bit
+        final int w = 0200; // Write bit
+        final int x = 0100; // Execute bit
 
         int mode = 0;
 

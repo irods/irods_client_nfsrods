@@ -22,18 +22,23 @@ import org.slf4j.LoggerFactory;
 
 public class ServerMain
 {
-    private static final String NFSRODS_HOME = System.getenv("NFSRODS_HOME");
+    // @formatter:off
+    private static final String NFSRODS_HOME        = System.getenv("NFSRODS_HOME");
+    private static final String LOGGER_CONFIG_PATH  = NFSRODS_HOME + "/config/log4j.properties";
+    private static final String SERVER_CONFIG_PATH  = NFSRODS_HOME + "/config/server.json";
+    private static final String EXPORTS_CONFIG_PATH = NFSRODS_HOME + "/config/exports";
+    // @formatter:on
 
     static
     {
-        PropertyConfigurator.configure(NFSRODS_HOME + "/config/log4j.properties");
+        PropertyConfigurator.configure(LOGGER_CONFIG_PATH);
     }
 
     private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
 
     public static void main(String[] args) throws JargonException, IOException, GSSException, NoSuchAlgorithmException
     {
-        ServerConfig config = JSONUtils.fromJSON(new File(NFSRODS_HOME + "/config/server.json"), ServerConfig.class);
+        ServerConfig config = JSONUtils.fromJSON(new File(SERVER_CONFIG_PATH), ServerConfig.class);
 
         log_.debug("main :: server config ==> {}", JSONUtils.toJSON(config));
 
@@ -54,7 +59,7 @@ public class ServerMain
             .build();
         // @formatter:on
 
-        ExportFile exportFile = new ExportFile(new File(NFSRODS_HOME + "/config/exports"));
+        ExportFile exportFile = new ExportFile(new File(EXPORTS_CONFIG_PATH));
         VirtualFileSystem vfs = new IRODSVirtualFileSystem(idMapper);
 
         // @formatter:off

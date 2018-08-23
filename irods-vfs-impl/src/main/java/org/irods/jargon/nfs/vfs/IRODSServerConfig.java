@@ -8,19 +8,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class IRODSServerConfig
 {
     // @formatter:off
-    @JsonProperty("zone")             private String zone_;
     @JsonProperty("host")             private String host_;
     @JsonProperty("port")             private int port_;
+    @JsonProperty("zone")             private String zone_;
     @JsonProperty("default_resource") private String defResc_;
     
     IRODSServerConfig() {}
     // @formatter:on
-
-    @JsonIgnore
-    public String getZone()
-    {
-        return zone_;
-    }
 
     @JsonIgnore
     public String getHost()
@@ -32,6 +26,12 @@ public class IRODSServerConfig
     public int getPort()
     {
         return port_;
+    }
+
+    @JsonIgnore
+    public String getZone()
+    {
+        return zone_;
     }
 
     @JsonIgnore
