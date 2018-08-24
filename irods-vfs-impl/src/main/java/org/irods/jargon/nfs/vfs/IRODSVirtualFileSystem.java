@@ -3,6 +3,7 @@ package org.irods.jargon.nfs.vfs;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.security.AccessController;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +25,7 @@ import org.dcache.nfs.vfs.VirtualFileSystem;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.protovalues.FilePermissionEnum;
 import org.irods.jargon.core.pub.CollectionAO;
 import org.irods.jargon.core.pub.CollectionAndDataObjectListAndSearchAO;
 import org.irods.jargon.core.pub.DataObjectAO;
@@ -565,7 +567,69 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         log_.debug("vfs::setattr");
         log_.debug("vfs::setattr - _inode = {}", resolveInode(getInodeNumber(_inode)));
         log_.debug("vfs::setattr - _stat  = {}", _stat);
-        // Not sure if this needs to be implemented.
+        
+        if (_stat.isDefined(Stat.StatAttribute.OWNER))
+        {
+            log_.debug("vfs::setattr - new owner id = {}", _stat.getUid());
+        }
+
+        if (_stat.isDefined(Stat.StatAttribute.GROUP))
+        {
+            log_.debug("vfs::setattr - new group id = {}", _stat.getGid());
+        }
+
+        if (_stat.isDefined(Stat.StatAttribute.MODE))
+        {
+            log_.debug("vfs::setattr - new mode = {}", Integer.toOctalString(_stat.getMode()));
+
+            IRODSUser user = getCurrentIRODSUser();
+            IRODSAccessObjectFactory aof = user.getIRODSAccessObjectFactory();
+
+            try
+            {
+                IRODSAccount acct = user.getRootAccount();
+                Path path = resolveInode(getInodeNumber(_inode));
+                DataObjectAO dao = aof.getDataObjectAO(acct);
+                FilePermissionEnum perm;
+                
+                // @formatter:off
+                switch (_stat.getMode() & 0700)
+                {
+                    case 0700:
+                    case 0600: perm = FilePermissionEnum.OWN; break;
+                    case 0400: perm = FilePermissionEnum.READ; break;
+                    case 0200: perm = FilePermissionEnum.WRITE; break;
+                    default:   perm = FilePermissionEnum.NULL; break;
+                }
+                // @formatter:on
+
+                dao.setAccessPermission(acct.getZone(), path.toString(), acct.getUserName(), perm);
+            }
+            catch (JargonException e)
+            {
+                log_.error(e.getMessage());
+            }
+        }
+
+        if (_stat.isDefined(Stat.StatAttribute.SIZE))
+        {
+            log_.debug("vfs::setattr - new size = {}", _stat.getSize());
+        }
+
+        if (_stat.isDefined(Stat.StatAttribute.ATIME))
+        {
+            log_.debug("vfs::setattr - new access time = {}", FileTime.fromMillis(_stat.getATime()).toInstant());
+        }
+
+        if (_stat.isDefined(Stat.StatAttribute.MTIME))
+        {
+            log_.debug("vfs::setattr - new modify time = {}", FileTime.fromMillis(_stat.getMTime()).toInstant());
+        }
+
+        if (_stat.isDefined(Stat.StatAttribute.CTIME))
+        {
+            log_.debug("vfs::setattr - new create time = {}", FileTime.fromMillis(_stat.getCTime()).toInstant());
+        }
     }
 
     @Override
