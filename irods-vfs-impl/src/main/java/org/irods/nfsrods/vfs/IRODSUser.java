@@ -1,4 +1,4 @@
-package org.irods.jargon.nfs.vfs;
+package org.irods.nfsrods.vfs;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -9,10 +9,12 @@ import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
-import org.irods.jargon.core.pub.IRODSAccessObjectFactoryImpl;
-import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.irods.jargon.core.pub.domain.User;
 import org.irods.jargon.core.pub.io.IRODSFile;
+import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
+import org.irods.nfsrods.config.IRODSServerConfig;
+import org.irods.nfsrods.config.NFSServerConfig;
+import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +30,7 @@ public class IRODSUser
     private IRODSFile rootFile_;
     private int userID_;
 
-    public IRODSUser(String _username, ServerConfig _config)
+    public IRODSUser(String _username, ServerConfig _config, IRODSAccessObjectFactory _factory)
     {
         inodeToPath_ = new NonBlockingHashMap<>();
         pathToInode_ = new NonBlockingHashMap<>();
@@ -51,8 +53,7 @@ public class IRODSUser
             proxiedAcct_ = IRODSAccount.instanceWithProxy(rodsSvrConfig.getHost(), rodsSvrConfig.getPort(), _username,
                                                           adminPw, rootPath, zone, rodsSvrConfig.getDefaultResource(),
                                                           adminAcct, zone);
-            IRODSFileSystem fs = IRODSFileSystem.instance();
-            factory_ = IRODSAccessObjectFactoryImpl.instance(fs.getIrodsSession());
+            factory_ = _factory;
             rootFile_ = factory_.getIRODSFileFactory(proxiedAcct_).instanceIRODSFile(rootPath);
 
             User user = factory_.getUserAO(proxiedAcct_).findByName(_username);
@@ -108,35 +109,34 @@ public class IRODSUser
 
     private void establishRoot()
     {
-        log_.debug("establish root at: {}", rootFile_);
+//        try
+//        {
+            if (!rootFile_.exists())// || !rootFile_.canRead())
+            {
+                log_.error("Root file does not exist or it cannot be read");
 
-        try
-        {
-            if (rootFile_.exists() && rootFile_.canRead())
-            {
-                log_.debug("root is valid");
-            }
-            else
-            {
                 try
                 {
-                    throw new DataNotFoundException("cannot establish root at:" + rootFile_);
+                    throw new DataNotFoundException("Cannot establish root at [" + rootFile_ + "].");
                 }
-                catch (DataNotFoundException ex)
+                catch (DataNotFoundException e)
                 {
-                    // FIXME Replace line below.
-                    // Logger.getLogger(IRODSUser.class.getName()).log(Level.SEVERE, null, ex);
+                    log_.error(e.getMessage());
                 }
+                
+                return;
             }
 
-            log_.debug("mapping root...");
+            log_.debug("establishRoot :: Mapping root to [{}] ...", rootFile_);
 
             map(getAndIncrementFileID(), rootFile_.getAbsolutePath());
-        }
-        finally
-        {
-            factory_.closeSessionAndEatExceptions();
-        }
+
+            log_.debug("establishRoot :: Mapping successful.");
+//        }
+//        finally
+//        {
+//            factory_.closeSessionAndEatExceptions();
+//        }
     }
 
     public void map(Long inodeNumber, String irodsPath)
@@ -148,6 +148,7 @@ public class IRODSUser
     {
         if (inodeToPath_.putIfAbsent(inodeNumber, path) != null)
         {
+            // FIXME Add message.
             throw new IllegalStateException();
         }
 
@@ -158,9 +159,11 @@ public class IRODSUser
             // try rollback
             if (inodeToPath_.remove(inodeNumber) != path)
             {
-                throw new IllegalStateException("cant map, rollback failed");
+                // FIXME Add message.
+                throw new IllegalStateException("Cannot remove mapping, rollback failed.");
             }
 
+            // FIXME Add message.
             throw new IllegalStateException("path ");
         }
     }
@@ -171,11 +174,13 @@ public class IRODSUser
 
         if (!path.equals(removedPath))
         {
+            // FIXME Add message.
             throw new IllegalStateException();
         }
 
         if (pathToInode_.remove(path) != inodeNumber)
         {
+            // FIXME Add message.
             throw new IllegalStateException();
         }
     }

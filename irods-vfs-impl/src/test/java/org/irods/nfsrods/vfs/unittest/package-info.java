@@ -5,4 +5,4 @@
  * @author conwaymc
  *
  */
-package org.irods.jargon.nfs.vfs.unittest;
+package org.irods.nfsrods.vfs.unittest;

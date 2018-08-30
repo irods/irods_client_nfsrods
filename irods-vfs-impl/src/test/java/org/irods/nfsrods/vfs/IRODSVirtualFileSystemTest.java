@@ -1,4 +1,4 @@
-package org.irods.jargon.nfs.vfs;
+package org.irods.nfsrods.vfs;
 
 import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.junit.After;
@@ -53,9 +53,9 @@ public class IRODSVirtualFileSystemTest
     @Test
     public void testCreateNewFile() throws Exception
     {
-        ServerConfig config = JSONUtils.fromJSON(NFSRODS_HOME + "/config/server.json", ServerConfig.class);
-        IRODSIdMap idMapper = new IRODSIdMap(config);
-        IRODSVirtualFileSystem vfs = new IRODSVirtualFileSystem(idMapper);
+//        ServerConfig config = JSONUtils.fromJSON(NFSRODS_HOME + "/config/server.json", ServerConfig.class);
+//        IRODSIdMap idMapper = new IRODSIdMap(config);
+//        IRODSVirtualFileSystem vfs = new IRODSVirtualFileSystem(idMapper);
         
 //        IRODSAccount irodsAccount = testingPropertiesHelper.buildIRODSAccountFromTestProperties(testingProperties);
 //        IRODSAccessObjectFactory accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();

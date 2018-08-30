@@ -1,4 +1,4 @@
-package org.irods.jargon.nfs.vfs;
+package org.irods.nfsrods.utils;
 
 import java.io.File;
 import java.io.IOException;

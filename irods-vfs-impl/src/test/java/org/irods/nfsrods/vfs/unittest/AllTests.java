@@ -1,6 +1,6 @@
-package org.irods.jargon.nfs.vfs.unittest;
+package org.irods.nfsrods.vfs.unittest;
 
-import org.irods.jargon.nfs.vfs.IRODSVirtualFileSystemTest;
+import org.irods.nfsrods.vfs.IRODSVirtualFileSystemTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 

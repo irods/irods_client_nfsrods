@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.irods.jargon</groupId>
@@ -12,31 +13,32 @@
 	<packaging>jar</packaging>
 	<name>irods-vfs-impl</name>
 	<description>iRODS VFS implementation for NFS4J</description>
-        <repositories>
-            <repository>
-                <id>dcache-snapshots</id>
-                <name>dCache.ORG maven repository</name>
-                <url>https://download.dcache.org/nexus/content/repositories/releases</url>
-                <layout>default</layout>
-            </repository>
-        </repositories>
-	<dependencies>
 
+	<repositories>
+		<repository>
+			<id>dcache-snapshots</id>
+			<name>dCache.ORG maven repository</name>
+			<url>https://download.dcache.org/nexus/content/repositories/releases</url>
+			<layout>default</layout>
+		</repository>
+	</repositories>
+
+	<dependencies>
 		<dependency>
 			<groupId>org.dcache</groupId>
 			<artifactId>nfs4j-core</artifactId>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.irods.jargon</groupId>
 			<artifactId>jargon-core</artifactId>
 		</dependency>
-		
+
 		<dependency>
-            <groupId>com.boundary</groupId>
-            <artifactId>high-scale-lib</artifactId>
-            <version>1.0.6</version>
-        </dependency>
+			<groupId>com.boundary</groupId>
+			<artifactId>high-scale-lib</artifactId>
+			<version>1.0.6</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>
@@ -73,15 +75,13 @@
 			<artifactId>jackson-annotations</artifactId>
 			<version>2.9.6</version>
 		</dependency>
-                
-                <dependency>
-                    <groupId>org.dcache</groupId>
-                    <artifactId>oncrpc4j-core</artifactId>
-                    <version>3.0.1</version>
-                        <type>jar</type>
-                </dependency>
 
-
+		<dependency>
+			<groupId>org.dcache</groupId>
+			<artifactId>oncrpc4j-core</artifactId>
+			<version>3.0.1</version>
+			<type>jar</type>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -96,15 +96,20 @@
 						<phase>generate-sources</phase>
 						<configuration>
 							<tasks>
-								<property name="src.dir" value="${project.build.sourceDirectory}" />
-								<property name="package.dir" value="org/irods/jargon/nfs/vfs/utils" />
-								<property name="package.name" value="org.irods.jargon.nfs.vfs.utils" />
-								<property name="buildtime" value="${maven.build.timestamp}" />
+								<property name="src.dir"
+									value="${project.build.sourceDirectory}" />
+								<property name="package.dir"
+									value="org/irods/jargon/nfs/vfs/utils" />
+								<property name="package.name"
+									value="org.irods.jargon.nfs.vfs.utils" />
+								<property name="buildtime"
+									value="${maven.build.timestamp}" />
 
 								<echo file="${src.dir}/${package.dir}/VfsVersion.java"
 									message="package ${package.name};${line.separator}" />
 								<echo file="${src.dir}/${package.dir}/VfsVersion.java"
-									append="true" message="public final class VfsVersion {${line.separator}" />
+									append="true"
+									message="public final class VfsVersion {${line.separator}" />
 								<echo file="${src.dir}/${package.dir}/VfsVersion.java"
 									append="true"
 									message=" public static String VERSION=&quot;${project.version}&quot;;${line.separator}" />
@@ -122,10 +127,13 @@
 						<phase>validate</phase>
 						<configuration>
 							<tasks>
-								<delete file="${basedir}/src/test/resources/testing.properties" />
-								<touch file="${basedir}/src/test/resources/testing.properties"
+								<delete
+									file="${basedir}/src/test/resources/testing.properties" />
+								<touch
+									file="${basedir}/src/test/resources/testing.properties"
 									mkdirs="true" />
-								<echo file="${basedir}/src/test/resources/testing.properties"
+								<echo
+									file="${basedir}/src/test/resources/testing.properties"
 									append="true">
 									test.data.directory=${jargon.test.data.directory}
 									test.irods.admin=${jargon.test.irods.admin}
@@ -200,11 +208,11 @@
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<configuration>
-                      <archive>
-                          <manifest>
-                              <mainClass>org.irods.jargon.nfs.vfs.ServerMain</mainClass>
-                          </manifest>
-                      </archive>
+					<archive>
+						<manifest>
+							<mainClass>org.irods.nfsrods.vfs.ServerMain</mainClass>
+						</manifest>
+					</archive>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>
@@ -220,5 +228,5 @@
 				</executions>
 			</plugin>
 		</plugins>
-		</build>
+	</build>
 </project>

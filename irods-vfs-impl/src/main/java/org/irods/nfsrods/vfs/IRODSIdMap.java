@@ -1,16 +1,19 @@
-package org.irods.jargon.nfs.vfs;
+package org.irods.nfsrods.vfs;
 
 import java.util.Map;
+
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosPrincipal;
-import org.ietf.jgss.GSSContext;
-import org.ietf.jgss.GSSException;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.dcache.auth.Subjects;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.oncrpc4j.rpc.RpcLoginService;
 import org.dcache.oncrpc4j.rpc.RpcTransport;
+import org.ietf.jgss.GSSContext;
+import org.ietf.jgss.GSSException;
+import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
+import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,16 +24,18 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
     private static final int NOBODY_UID = 65534;
     private static final int NOBODY_GID = 65534;
 
-    private static final int DEFAULT_UID = 1001;
-    private static final int DEFAULT_GID = 1001;
+//    private static final int DEFAULT_UID = 1001;
+//    private static final int DEFAULT_GID = 1001;
 
     private final ServerConfig config_;
+    private final IRODSAccessObjectFactory factory_;
     private Map<String, Integer> principleUidMap_;
     private Map<Integer, IRODSUser> irodsPrincipleMap_;
 
-    public IRODSIdMap(ServerConfig _config)
+    public IRODSIdMap(ServerConfig _config, IRODSAccessObjectFactory _factory)
     {
         config_ = _config;
+        factory_ = _factory;
         principleUidMap_ = new NonBlockingHashMap<>();
         irodsPrincipleMap_ = new NonBlockingHashMap<>();
     }
@@ -108,7 +113,7 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
                     log_.debug("IRODSIdMap :: userName = {}", userName);
                 }
 
-                IRODSUser user = new IRODSUser(userName, config_);
+                IRODSUser user = new IRODSUser(userName, config_, factory_);
                 rodsUserID = user.getUserID();
                 principleUidMap_.put(principal, rodsUserID);
                 irodsPrincipleMap_.put(rodsUserID, user);
@@ -123,7 +128,7 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
 
         // TODO Investigate if this should be different.
         // if everything fails return defaults.
-        return Subjects.of(DEFAULT_UID, DEFAULT_GID);
+        return Subjects.of(NOBODY_UID, NOBODY_GID);
     }
 
     public IRODSUser resolveUser(int _userID)

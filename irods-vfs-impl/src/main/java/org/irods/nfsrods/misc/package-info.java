@@ -5,4 +5,4 @@
  * @author Mike Conway - NIEHS
  *
  */
-package org.irods.jargon.nfs.vfs.utils;
+package org.irods.nfsrods.misc;

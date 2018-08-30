@@ -1,4 +1,4 @@
-package org.irods.jargon.nfs.vfs;
+package org.irods.nfsrods.config;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

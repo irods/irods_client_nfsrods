@@ -1,4 +1,4 @@
-package org.irods.jargon.nfs.vfs;
+package org.irods.nfsrods.vfs;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -39,6 +39,7 @@ import org.irods.jargon.core.pub.io.IRODSFileInputStream;
 import org.irods.jargon.core.pub.io.IRODSFileOutputStream;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectType;
+import org.irods.nfsrods.utils.JSONUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -192,6 +193,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             throw new IOException(e);
         }
+        finally
+        {
+            closeCurrentConnection();
+        }
     }
 
     @Override
@@ -252,9 +257,18 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     {
         log_.debug("vfs::getattr");
         log_.debug("vfs::getattr - _inode = {}", resolveInode(getInodeNumber(_inode)));
+
         long inodeNumber = getInodeNumber(_inode);
         Path path = resolveInode(inodeNumber);
-        return statPath(path, inodeNumber);
+
+        try
+        {
+            return statPath(path, inodeNumber);
+        }
+        finally
+        {
+            closeCurrentConnection();
+        }
     }
 
     @Override
@@ -318,6 +332,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             throw new IOException(e);
         }
+        finally
+        {
+            closeCurrentConnection();
+        }
 
         return new DirectoryStream(list);
     }
@@ -376,6 +394,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             throw new IOException(e);
         }
+        finally
+        {
+            closeCurrentConnection();
+        }
     }
 
     @Override
@@ -391,14 +413,14 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             IRODSFile irodsFile = user.getIRODSAccessObjectFactory().getIRODSFileFactory(user.getRootAccount())
                 .instanceIRODSFile(parentPath.toString(), _path);
 
-            log_.debug("vfs::mkdir - inode map (before creating new directory) = {}", mapper_.writeValueAsString(user
-                .getInodeToPathMap()));
-            log_.debug("vfs::mkdir - new directory path = {}", irodsFile.getAbsolutePath());
+            String json = JSONUtils.toJSON(user.getInodeToPathMap());
+            log_.debug("vfs::mkdir - Inode map (before creating new directory) = {}", json);
+            log_.debug("vfs::mkdir - New directory path = {}", irodsFile.getAbsolutePath());
 
             irodsFile.mkdir();
 
             long inodeNumber = user.getAndIncrementFileID();
-            log_.debug("vfs::mkdir - new inode number = {}", inodeNumber);
+            log_.debug("vfs::mkdir - New inode number = {}", inodeNumber);
 
             user.map(inodeNumber, irodsFile.getAbsolutePath());
 
@@ -407,6 +429,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         catch (JargonException e)
         {
             throw new IOException(e);
+        }
+        finally
+        {
+            closeCurrentConnection();
         }
     }
 
@@ -481,6 +507,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             throw new IOException(e);
         }
+        finally
+        {
+            closeCurrentConnection();
+        }
     }
 
     @Override
@@ -516,6 +546,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             throw new IOException(e);
         }
+        finally
+        {
+            closeCurrentConnection();
+        }
     }
 
     @Override
@@ -550,6 +584,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         catch (JargonException e)
         {
             throw new IOException(e);
+        }
+        finally
+        {
+            closeCurrentConnection();
         }
     }
 
@@ -609,6 +647,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             {
                 log_.error(e.getMessage());
             }
+            finally
+            {
+                closeCurrentConnection();
+            }
         }
 
         if (_stat.isDefined(Stat.StatAttribute.SIZE))
@@ -666,6 +708,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         catch (IOException | JargonException e)
         {
             throw new IOException(e);
+        }
+        finally
+        {
+            closeCurrentConnection();
         }
     }
 
@@ -846,15 +892,21 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         return Longs.fromByteArray(_inode.getFileId());
     }
 
-    private IRODSUser getCurrentIRODSUser()
-    {
-        return idMapper_.resolveUser(getUserID());
-    }
-
-    private int getUserID()
+    private static int getUserID()
     {
         Subject subject = Subject.getSubject(AccessController.getContext());
         String name = subject.getPrincipals().iterator().next().getName();
         return Integer.parseInt(name);
+    }
+
+    private IRODSUser getCurrentIRODSUser()
+    {
+        return idMapper_.resolveUser(getUserID());
+    }
+    
+    private void closeCurrentConnection()
+    {
+        IRODSUser user = getCurrentIRODSUser();
+        user.getIRODSAccessObjectFactory().closeSessionAndEatExceptions(user.getRootAccount());
     }
 }
