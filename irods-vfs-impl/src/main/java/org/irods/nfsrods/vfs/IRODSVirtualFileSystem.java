@@ -43,19 +43,11 @@ import org.irods.nfsrods.utils.JSONUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.primitives.Longs;
 
 public class IRODSVirtualFileSystem implements VirtualFileSystem
 {
     private static final Logger log_ = LoggerFactory.getLogger(IRODSVirtualFileSystem.class);
-    private static final ObjectMapper mapper_ = new ObjectMapper();
-
-    static
-    {
-        mapper_.enable(SerializationFeature.INDENT_OUTPUT);
-    }
 
     private final IRODSIdMap idMapper_;
 
