@@ -137,27 +137,32 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
         if (_parent == null)
         {
-            throw new IllegalArgumentException("null parent");
+            throw new IllegalArgumentException("Null parent");
         }
 
         if (_type == null)
         {
-            throw new IllegalArgumentException("null type");
+            throw new IllegalArgumentException("Null type");
         }
 
         if (_name == null)
         {
-            throw new IllegalArgumentException("null name");
+            throw new IllegalArgumentException("Null name");
         }
 
         if (_subject == null)
         {
-            throw new IllegalArgumentException("null subjet");
+            throw new IllegalArgumentException("Null subjet");
+        }
+        
+        if (Type.REGULAR != _type)
+        {
+            throw new IllegalArgumentException("Invalid file type [" + _type + "].");
         }
 
         IRODSUser user = getCurrentIRODSUser();
 
-        log_.debug("vfs::create - _parent  = {}", _parent);
+        log_.debug("vfs::create - _parent  = {}", resolveInode(getInodeNumber(_parent)));
         log_.debug("vfs::create - _type    = {}", _type);
         log_.debug("vfs::create - _name    = {}", _name);
         log_.debug("vfs::create - _subject = {}", _subject);
@@ -173,11 +178,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             IRODSFileFactory fileFactory = aoFactory.getIRODSFileFactory(user.getRootAccount());
             IRODSFile newFile = fileFactory.instanceIRODSFile(newPath.toString());
 
-            log_.debug("vfs::create - creating new file at: {}", newFile);
+            log_.debug("vfs::create - Creating new file at: {}", newFile);
 
             newFile.createNewFile();
             long newInodeNumber = user.getAndIncrementFileID();
             user.map(newInodeNumber, newPath);
+            newFile.close();
 
             return toFh(newInodeNumber);
         }
@@ -348,7 +354,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         IRODSUser user = getCurrentIRODSUser();
 
         if (user.getPathToInodeMap().containsKey(targetPath))
+        {
             return toFh(resolvePath(targetPath));
+        }
 
         // The path has not been seen before.
         // Create a new inode number and map it to the target path if and only
@@ -441,19 +449,14 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             Path parentPath = resolveInode(getInodeNumber(_inode));
             Path destPath = resolveInode(getInodeNumber(_dest));
-
-            // create IRODSFile for file to move
             String irodsParentPath = parentPath.toString() + "/" + _oldName;
-            log_.debug("vfs::move - parent path = {}", irodsParentPath);
+            log_.debug("vfs::move - Parent path = {}", irodsParentPath);
 
             IRODSUser user = getCurrentIRODSUser();
             IRODSAccessObjectFactory aof = user.getIRODSAccessObjectFactory();
             IRODSFile pathFile = aof.getIRODSFileFactory(user.getRootAccount()).instanceIRODSFile(irodsParentPath);
-
-            // create empty destination file object
             String destPathString;
 
-            // make path string for destination based on if rename occurs
             if (_newName != null && !_oldName.equals(_newName))
             {
                 destPathString = destPath.toString() + "/" + _newName;
@@ -463,12 +466,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 destPathString = destPath.toString() + "/" + _oldName;
             }
 
-            log_.debug("vfs::move - destination path = {}", destPathString);
+            log_.debug("vfs::move - Destination path = {}", destPathString);
 
-            // create irods destination file object
             IRODSFile destFile = aof.getIRODSFileFactory(user.getRootAccount()).instanceIRODSFile(destPathString);
-
-            // get file system controls
             IRODSFileSystemAO fileSystemAO = aof.getIRODSFileSystemAO(user.getRootAccount());
 
             log_.debug("vfs::move - is file? " + pathFile.isFile());
@@ -558,14 +558,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
         try
         {
-            // get Irods User
             IRODSUser user = getCurrentIRODSUser();
 
             Path parentPath = resolveInode(getInodeNumber(_parent));
             Path objectPath = parentPath.resolve(_path);
             String irodsParentPath = parentPath.toString();
 
-            log_.debug("parent path: {}", irodsParentPath);
+            log_.debug("vfs::remove - Parent path: {}", irodsParentPath);
 
             IRODSFile pathFile = user.getIRODSAccessObjectFactory().getIRODSFileFactory(user.getRootAccount())
                 .instanceIRODSFile(irodsParentPath, _path);
@@ -600,17 +599,17 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         
         if (_stat.isDefined(Stat.StatAttribute.OWNER))
         {
-            log_.debug("vfs::setattr - new owner id = {}", _stat.getUid());
+            log_.debug("vfs::setattr - New owner id = {}", _stat.getUid());
         }
 
         if (_stat.isDefined(Stat.StatAttribute.GROUP))
         {
-            log_.debug("vfs::setattr - new group id = {}", _stat.getGid());
+            log_.debug("vfs::setattr - New group id = {}", _stat.getGid());
         }
 
         if (_stat.isDefined(Stat.StatAttribute.MODE))
         {
-            log_.debug("vfs::setattr - new mode = {}", Integer.toOctalString(_stat.getMode()));
+            log_.debug("vfs::setattr - New mode = {}", Integer.toOctalString(_stat.getMode()));
 
             IRODSUser user = getCurrentIRODSUser();
             IRODSAccessObjectFactory aof = user.getIRODSAccessObjectFactory();
@@ -647,22 +646,22 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
         if (_stat.isDefined(Stat.StatAttribute.SIZE))
         {
-            log_.debug("vfs::setattr - new size = {}", _stat.getSize());
+            log_.debug("vfs::setattr - New size = {}", _stat.getSize());
         }
 
         if (_stat.isDefined(Stat.StatAttribute.ATIME))
         {
-            log_.debug("vfs::setattr - new access time = {}", FileTime.fromMillis(_stat.getATime()).toInstant());
+            log_.debug("vfs::setattr - New access time = {}", FileTime.fromMillis(_stat.getATime()).toInstant());
         }
 
         if (_stat.isDefined(Stat.StatAttribute.MTIME))
         {
-            log_.debug("vfs::setattr - new modify time = {}", FileTime.fromMillis(_stat.getMTime()).toInstant());
+            log_.debug("vfs::setattr - New modify time = {}", FileTime.fromMillis(_stat.getMTime()).toInstant());
         }
 
         if (_stat.isDefined(Stat.StatAttribute.CTIME))
         {
-            log_.debug("vfs::setattr - new create time = {}", FileTime.fromMillis(_stat.getCTime()).toInstant());
+            log_.debug("vfs::setattr - New create time = {}", FileTime.fromMillis(_stat.getCTime()).toInstant());
         }
     }
 
@@ -738,7 +737,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             CollectionAndDataObjectListAndSearchAO lao = null;
             lao = aof.getCollectionAndDataObjectListAndSearchAO(user.getRootAccount());
             ObjStat objStat = lao.retrieveObjectStatForPath(path);
-            log_.debug("vfs::statPath - objStat = {}", objStat);
+            log_.debug("vfs::statPath - iRODS stat info = {}", objStat);
 
             Stat stat = new Stat();
 
@@ -764,9 +763,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             stat.setFileid((int) _inodeNumber);
             stat.setGeneration(objStat.getModifiedAt().getTime());
 
-            log_.debug("vfs::statPath - user id     = {}", getUserID());
-            log_.debug("vfs::statPath - permissions = {}", Stat.modeToString(stat.getMode()));
-            log_.debug("vfs::statPath - stat        = {}", stat);
+            log_.debug("vfs::statPath - User id     = {}", getUserID());
+            log_.debug("vfs::statPath - Permissions = {}", Stat.modeToString(stat.getMode()));
+            log_.debug("vfs::statPath - Stat        = {}", stat);
 
             return stat;
         }
@@ -840,7 +839,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             // TODO This appears to attached to collections automatically made
             // by iRODS (e.g. /tempZone, /tempZone/{home,public}, etc.).
             case COLLECTION_HEURISTIC_STANDIN:
-                _stat.setMode(Stat.S_IFDIR | 0777);
+                _stat.setMode(Stat.S_IFDIR | 0700);
                 break;
 
             case LOCAL_DIR:
