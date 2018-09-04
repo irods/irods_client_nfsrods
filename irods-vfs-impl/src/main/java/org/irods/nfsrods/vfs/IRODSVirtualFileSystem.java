@@ -25,6 +25,7 @@ import org.dcache.nfs.vfs.VirtualFileSystem;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.packinstr.DataObjInp.OpenFlags;
 import org.irods.jargon.core.protovalues.FilePermissionEnum;
 import org.irods.jargon.core.pub.CollectionAO;
 import org.irods.jargon.core.pub.CollectionAndDataObjectListAndSearchAO;
@@ -646,7 +647,50 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
         if (_stat.isDefined(Stat.StatAttribute.SIZE))
         {
-            log_.debug("vfs::setattr - New size = {}", _stat.getSize());
+            IRODSUser user = getCurrentIRODSUser();
+            IRODSAccessObjectFactory aof = user.getIRODSAccessObjectFactory();
+
+            try
+            {
+                IRODSFileFactory ff = aof.getIRODSFileFactory(user.getRootAccount());
+                Path path = resolveInode(getInodeNumber(_inode));
+                IRODSFile file = ff.instanceIRODSFile(path.toString());
+                
+                // Only allow shrinking.
+                if (_stat.getSize() >= file.length())
+                {
+                    // TODO Should this be an exception?
+                    log_.debug("vfs::setattr - Increasing the size of the file is prohibited!");
+                    return;
+                }
+                
+                byte[] bytes = new byte[(int) _stat.getSize()];
+                int bytesRead = 0;
+                
+                try (IRODSFileInputStream fis = ff.instanceIRODSFileInputStream(file))
+                {
+                    bytesRead = fis.read(bytes);
+                }
+
+                log_.debug("vfs::setattr - Bytes read = {}", bytesRead);
+                
+                try (IRODSFileOutputStream fos = ff.instanceIRODSFileOutputStream(file, OpenFlags.WRITE_TRUNCATE))
+                {
+                    fos.write(bytes, 0, bytesRead);
+                }
+
+                log_.debug("vfs::setattr - New size = {}", _stat.getSize());
+
+                file.close();
+            }
+            catch (JargonException e)
+            {
+                log_.error(e.getMessage());
+            }
+            finally
+            {
+                closeCurrentConnection();
+            }
         }
 
         if (_stat.isDefined(Stat.StatAttribute.ATIME))
@@ -657,6 +701,30 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         if (_stat.isDefined(Stat.StatAttribute.MTIME))
         {
             log_.debug("vfs::setattr - New modify time = {}", FileTime.fromMillis(_stat.getMTime()).toInstant());
+
+            // FIXME IRODSFile::setLastModified is not implemented.
+//            IRODSUser user = getCurrentIRODSUser();
+//            IRODSAccessObjectFactory aof = user.getIRODSAccessObjectFactory();
+//            
+//            try
+//            {
+//                IRODSFileFactory ff = aof.getIRODSFileFactory(user.getRootAccount());
+//                Path path = resolveInode(getInodeNumber(_inode));
+//                IRODSFile file = ff.instanceIRODSFile(path.toString());
+//
+//                log_.debug("vfs::setattr - New modify time = {}", FileTime.fromMillis(_stat.getMTime()).toInstant());
+//
+//                file.setLastModified(_stat.getMTime());
+//                file.close();
+//            }
+//            catch (JargonException e)
+//            {
+//                log_.error(e.getMessage());
+//            }
+//            finally
+//            {
+//                closeCurrentConnection();
+//            }
         }
 
         if (_stat.isDefined(Stat.StatAttribute.CTIME))
