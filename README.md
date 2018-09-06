@@ -6,6 +6,7 @@ An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation s
 - Authentication via Kerberos
 - Exposes iRODS through a mount point
 - Clients avoid the need for learning icommands
+- Clients avoid the need to install additional iRODS packages
 - Supports many common *nix commands (e.g. mkdir, truncate, chmod, etc.)
 
 ## Requirements
@@ -25,7 +26,7 @@ $ mvn clean install -Dmaven.test.skip=true
 
 ### Running
 ```bash
-$ export NFSRODS_HOME=$(pwd)
+$ export NFSRODS_HOME=$(pwd)/irods-vfs-impl
 $ sudo -E java -jar irods-vfs-impl/target/irods-vfs-impl-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
