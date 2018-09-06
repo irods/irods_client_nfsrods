@@ -2,11 +2,11 @@
 An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation supporting the iRODS Data Grid.
 
 ## Features
-- Configurable.
-- Authentication via Kerberos.
-- Exposes iRODS through a mount point.
-- Clients avoid the need for learning icommands.
-- Supports many common *nix commands (e.g. mkdir, truncate, chmod, etc.).
+- Configurable
+- Authentication via Kerberos
+- Exposes iRODS through a mount point
+- Clients avoid the need for learning icommands
+- Supports many common *nix commands (e.g. mkdir, truncate, chmod, etc.)
 
 ## Requirements
 - Kerberos
@@ -36,5 +36,5 @@ $ sudo mount -o sec=krb5,port=2050 <hostname>:/ <mount_point>
 ```
 
 ### TODOs
-- Implement support for Parallel File Systems.
-- Implement support for connection pooling.
+- Implement support for Parallel File Systems
+- Implement support for connection pooling
