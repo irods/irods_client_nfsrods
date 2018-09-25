@@ -128,14 +128,14 @@ $ sudo -E java -jar $NFSRODS_HOME/target/irods-vfs-impl-1.0.0-SNAPSHOT-jar-with-
 
 ### Mounting
 ```bash
+$ kinit -f <iRODS_account_name>
 $ sudo mkdir <mount_point>
 $ sudo mount -o sec=krb5,port=2050 <hostname>:/ <mount_point>
 ```
 
 If you do not receive any errors after mounting, then you should be able to access the mount
-point after authenticating with the Kerberos server like so:
+point like so:
 ```bash
-$ kinit -f <iRODS_account_name>
 $ cd <mount_point>/path/to/collection_or_data_object
 ```
 
