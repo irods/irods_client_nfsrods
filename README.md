@@ -13,6 +13,7 @@ An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation s
 - Kerberos
 - Java Development Kit (JDK v8)
 - Maven
+- OS NFS packages (e.g Ubuntu 16.04: nfs-common)
 
 ## Compiling, Running, and Mounting
 The following instructions assume you're running Ubuntu 16.04 and Bash.
@@ -121,8 +122,8 @@ Each config option is explained below.
 
 After updating the config file, you should be able to run the server using the following commands:
 ```bash
-$ export NFSRODS_HOME=$(pwd)/irods-vfs-impl
-$ sudo -E java -jar irods-vfs-impl/target/irods-vfs-impl-1.0.0-SNAPSHOT-jar-with-dependencies.jar
+$ export NFSRODS_HOME=/path/to/irods_client_nfsrods/irods-vfs-impl
+$ sudo -E java -jar $NFSRODS_HOME/target/irods-vfs-impl-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
 ### Mounting
