@@ -6,49 +6,63 @@
 #
 
 @test "list contents: /mnt/nfsrods/home/rods" {
-    run ls -l /mnt/nfsrods/home/rods
-    [ "$status" -eq 0 ]
+    ls /mnt/nfsrods/home/rods
 }
 
-@test "create file: /mnt/nfsrods/home/rods/test_file.txt" {
-    run touch /mnt/nfsrods/home/rods/test_file.txt
-    [ "$status" -eq 0 ]
+@test "create/remove file: /mnt/nfsrods/home/rods/test_file.txt" {
+    cd /mnt/nfsrods/home/rods
+    touch test_file.txt
+    rm test_file.txt
 }
 
-@test "remove file: /mnt/nfsrods/home/rods/test_file.txt" {
-    run rm /mnt/nfsrods/home/rods/test_file.txt
-    [ "$status" -eq 0 ]
+@test "create/remove directory: /mnt/nfsrods/home/rods/test.d" {
+    cd /mnt/nfsrods/home/rods
+    mkdir test.d
+    rmdir test.d
 }
 
-@test "create directory: /mnt/nfsrods/home/rods/test.d" {
-    run mkdir /mnt/nfsrods/home/rods/test.d
-    [ "$status" -eq 0 ]
-}
+@test "write/read non-empty file: /mnt/nfsrods/home/rods/test_file.txt" {
+    cd /mnt/nfsrods/home/rods
 
-@test "remove directory: /mnt/nfsrods/home/rods/test.d" {
-    run rmdir /mnt/nfsrods/home/rods/test.d
-    [ "$status" -eq 0 ]
-}
+    echo 'Hello, NFSRODS!' > test_file.txt
 
-@test "create non-empty file: echo 'Hello, NFSRODS!' > /mnt/nfsrods/home/rods/test_file.txt" {
-    run $(echo 'Hello, NFSRODS!' > /mnt/nfsrods/home/rods/test_file.txt)
-    [ "$status" -eq 0 ]
-}
-
-@test "read non-empty file: /mnt/nfsrods/home/rods/test_file.txt" {
-    run cat /mnt/nfsrods/home/rods/test_file.txt
+    run cat test_file.txt
     [ "$status" -eq 0 ]
     [ "$output" = "Hello, NFSRODS!" ]
+
+    rm test_file.txt
 }
 
 @test "truncate non-empty file to 5 bytes: /mnt/nfsrods/home/rods/test_file.txt" {
-    run $(truncate -s5 /mnt/nfsrods/home/rods/test_file.txt)
-    [ "$status" -eq 0 ]
+    cd /mnt/nfsrods/home/rods
 
-    run cat /mnt/nfsrods/home/rods/test_file.txt
+    echo 'Hello, NFSRODS!' > test_file.txt
+    run cat test_file.txt
+    [ "$status" -eq 0 ]
+    [ "$output" = "Hello, NFSRODS!" ]
+
+    truncate -s5 test_file.txt
+
+    run cat test_file.txt
     [ "$status" -eq 0 ]
     [ "$output" = "Hello" ]
 
-    run rm /mnt/nfsrods/home/rods/test_file.txt
+    rm test_file.txt
+}
+
+@test "rename file: /mnt/nfsrods/home/rods/test_file.txt -> /mnt/nfsrods/home/rods/renamed.txt" {
+    cd /mnt/nfsrods/home/rods
+
+    echo 'Hello, NFSRODS!' > test_file.txt
+    run cat test_file.txt
     [ "$status" -eq 0 ]
+    [ "$output" = "Hello, NFSRODS!" ]
+
+    mv test_file.txt renamed.txt
+
+    run ls renamed.txt
+    [ "$status" -eq 0 ]
+    [ "$output" = "renamed.txt" ]
+
+    rm renamed.txt
 }

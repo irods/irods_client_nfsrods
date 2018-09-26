@@ -509,7 +509,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             IRODSFile file = user.getIRODSAccessObjectFactory().getIRODSFileFactory(user.getRootAccount())
                 .instanceIRODSFile(parentPath.toString(), _path);
 
-            file.delete();
+            if (!file.delete())
+            {
+                throw new IOException("Failed to delete data object in iRODS.");
+            }
+
             user.unmap(getInodeNumber(objectPath), objectPath);
         }
         catch (JargonException e)
