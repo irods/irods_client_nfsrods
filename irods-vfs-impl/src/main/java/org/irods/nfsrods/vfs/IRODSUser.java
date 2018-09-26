@@ -2,7 +2,6 @@ package org.irods.nfsrods.vfs;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
@@ -23,10 +22,8 @@ public class IRODSUser
 {
     private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMap.class);
 
-    //private NonBlockingHashMap<Long, Path> inodeToPath_;
-    //private NonBlockingHashMap<Path, Long> pathToInode_;
-    private ConcurrentHashMap<Long, Path> inodeToPath_;
-    private ConcurrentHashMap<Path, Long> pathToInode_;
+    private NonBlockingHashMap<Long, Path> inodeToPath_;
+    private NonBlockingHashMap<Path, Long> pathToInode_;
     private AtomicLong fileID_;
     private IRODSAccessObjectFactory factory_;
     private IRODSAccount proxiedAcct_;
@@ -35,8 +32,8 @@ public class IRODSUser
 
     public IRODSUser(String _username, ServerConfig _config, IRODSAccessObjectFactory _factory)
     {
-        inodeToPath_ = new ConcurrentHashMap<>();
-        pathToInode_ = new ConcurrentHashMap<>();
+        inodeToPath_ = new NonBlockingHashMap<>();
+        pathToInode_ = new NonBlockingHashMap<>();
         fileID_ = new AtomicLong(1); // Inode numbers start at 1
 
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
@@ -80,12 +77,12 @@ public class IRODSUser
         return rootFile_.getAbsolutePath();
     }
 
-    public ConcurrentHashMap<Long, Path> getInodeToPathMap()
+    public NonBlockingHashMap<Long, Path> getInodeToPathMap()
     {
         return inodeToPath_;
     }
 
-    public ConcurrentHashMap<Path, Long> getPathToInodeMap()
+    public NonBlockingHashMap<Path, Long> getPathToInodeMap()
     {
         return pathToInode_;
     }
