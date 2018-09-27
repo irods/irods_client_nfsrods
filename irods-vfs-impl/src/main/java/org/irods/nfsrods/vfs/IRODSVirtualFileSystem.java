@@ -264,7 +264,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
                 Stat stat = statPath(filePath, inodeNumber);
                 Inode inode = toFh(inodeNumber);
-                list.add(new DirectoryEntry(filePath.getFileName().toString(), inode, stat, list.size()));
+                list.add(new DirectoryEntry(filePath.getFileName().toString(), inode, stat, inodeNumber));
             }
         }
         catch (JargonException e)
