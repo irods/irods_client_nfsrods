@@ -2,6 +2,8 @@ package org.irods.nfsrods.vfs;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
@@ -15,8 +17,11 @@ import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.IRODSServerConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
+import org.irods.nfsrods.utils.JSONUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 public class IRODSUser
 {
@@ -24,6 +29,7 @@ public class IRODSUser
 
     private NonBlockingHashMap<Long, Path> inodeToPath_;
     private NonBlockingHashMap<Path, Long> pathToInode_;
+    private List<Long> availableInodeNumbers_;
     private AtomicLong fileID_;
     private IRODSAccessObjectFactory factory_;
     private IRODSAccount proxiedAcct_;
@@ -34,6 +40,7 @@ public class IRODSUser
     {
         inodeToPath_ = new NonBlockingHashMap<>();
         pathToInode_ = new NonBlockingHashMap<>();
+        availableInodeNumbers_ = new ArrayList<>();
         fileID_ = new AtomicLong(1); // Inode numbers start at 1
 
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
@@ -79,16 +86,39 @@ public class IRODSUser
 
     public NonBlockingHashMap<Long, Path> getInodeToPathMap()
     {
+        try
+        {
+            log_.debug("getInodeToPathMap :: data = > {}", JSONUtils.toJSON(inodeToPath_));
+        }
+        catch (JsonProcessingException e)
+        {
+            log_.error(e.getMessage());
+        }
+
         return inodeToPath_;
     }
 
     public NonBlockingHashMap<Path, Long> getPathToInodeMap()
     {
+        try
+        {
+            log_.debug("getPathToInodeMap :: data = > {}", JSONUtils.toJSON(pathToInode_));
+        }
+        catch (JsonProcessingException e)
+        {
+            log_.error(e.getMessage());
+        }
+
         return pathToInode_;
     }
 
     public Long getAndIncrementFileID()
     {
+        if (!availableInodeNumbers_.isEmpty())
+        {
+            return availableInodeNumbers_.remove(0);
+        }
+
         return fileID_.getAndIncrement();
     }
 
@@ -97,7 +127,7 @@ public class IRODSUser
         return factory_;
     }
 
-    public IRODSAccount getRootAccount()
+    public IRODSAccount getAccount()
     {
         return proxiedAcct_;
     }
@@ -109,55 +139,48 @@ public class IRODSUser
 
     private void establishRoot()
     {
-//        try
-//        {
-            if (!rootFile_.exists())// || !rootFile_.canRead())
+        if (!rootFile_.exists())
+        {
+            log_.error("Root file does not exist or it cannot be read");
+
+            try
             {
-                log_.error("Root file does not exist or it cannot be read");
-
-                try
-                {
-                    throw new DataNotFoundException("Cannot establish root at [" + rootFile_ + "].");
-                }
-                catch (DataNotFoundException e)
-                {
-                    log_.error(e.getMessage());
-                }
-                
-                return;
+                throw new DataNotFoundException("Cannot establish root at [" + rootFile_ + "].");
             }
+            catch (DataNotFoundException e)
+            {
+                log_.error(e.getMessage());
+            }
+            
+            return;
+        }
 
-            log_.debug("establishRoot :: Mapping root to [{}] ...", rootFile_);
+        log_.debug("establishRoot :: Mapping root to [{}] ...", rootFile_);
 
-            map(getAndIncrementFileID(), rootFile_.getAbsolutePath());
+        map(getAndIncrementFileID(), rootFile_.getAbsolutePath());
 
-            log_.debug("establishRoot :: Mapping successful.");
-//        }
-//        finally
-//        {
-//            factory_.closeSessionAndEatExceptions();
-//        }
+        log_.debug("establishRoot :: Mapping successful.");
     }
 
-    public void map(Long inodeNumber, String irodsPath)
+    public void map(Long _inodeNumber, String _path)
     {
-        map(inodeNumber, Paths.get(irodsPath));
+        map(_inodeNumber, Paths.get(_path));
     }
 
-    public void map(Long inodeNumber, Path path)
+    public void map(Long _inodeNumber, Path _path)
     {
-        if (inodeToPath_.putIfAbsent(inodeNumber, path) != null)
+        if (inodeToPath_.putIfAbsent(_inodeNumber, _path) != null)
         {
             // FIXME Add message.
             throw new IllegalStateException();
         }
 
-        Long otherInodeNumber = pathToInode_.putIfAbsent(path, inodeNumber);
+        Long otherInodeNumber = pathToInode_.putIfAbsent(_path, _inodeNumber);
 
         if (otherInodeNumber != null)
         {
             // try rollback
-            if (inodeToPath_.remove(inodeNumber) != path)
+            if (inodeToPath_.remove(_inodeNumber) != _path)
             {
                 // FIXME Add message.
                 throw new IllegalStateException("Cannot remove mapping, rollback failed.");
@@ -168,27 +191,29 @@ public class IRODSUser
         }
     }
 
-    public void unmap(Long inodeNumber, Path path)
+    public void unmap(Long _inodeNumber, Path _path)
     {
-        Path removedPath = inodeToPath_.remove(inodeNumber);
+        Path removedPath = inodeToPath_.remove(_inodeNumber);
 
-        if (!path.equals(removedPath))
+        if (!_path.equals(removedPath))
         {
             // FIXME Add message.
             throw new IllegalStateException();
         }
 
-        if (pathToInode_.remove(path) != inodeNumber)
+        if (pathToInode_.remove(_path) != _inodeNumber)
         {
             // FIXME Add message.
             throw new IllegalStateException();
         }
+        
+        availableInodeNumbers_.add(_inodeNumber);
     }
 
-    public void remap(Long inodeNumber, Path oldPath, Path newPath)
+    public void remap(Long _inodeNumber, Path _oldPath, Path _newPath)
     {
-        unmap(inodeNumber, oldPath);
-        map(inodeNumber, newPath);
+        unmap(_inodeNumber, _oldPath);
+        map(_inodeNumber, _newPath);
     }
 
     @Override
