@@ -120,6 +120,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         long parentInodeNumber = toInodeNumber(_parent);
         Path parentPath = getPath(parentInodeNumber);
         Path newPath = parentPath.resolve(_name);
+        
+        // TODO Should be check if the file exists before creating it?
 
         try
         {
@@ -129,7 +131,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
             log_.debug("vfs::create - Creating new file at: {}", newFile);
 
-            newFile.createNewFile();
+            if (!newFile.createNewFile())
+            {
+                throw new IOException("Failed to create new file in iRODS.");
+            }
+                
             long newInodeNumber = user.getAndIncrementFileID();
             user.map(newInodeNumber, newPath);
             newFile.close();
@@ -289,19 +295,21 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         Path parentPath = getPath(toInodeNumber(_parent));
         Path targetPath = parentPath.normalize().resolve(_path);
 
-        log_.debug("vfs::lookup - looking up [{}] ...", targetPath);
+        log_.debug("vfs::lookup - Looking up [{}] ...", targetPath);
 
         // Handle paths that include collections/files that have not been mapped yet.
         IRODSUser user = getCurrentIRODSUser();
 
         if (user.getPathToInodeMap().containsKey(targetPath))
         {
+            log_.debug("vfs::lookup - Found [{}].  Returning Inode ...", targetPath);
             return toFh(getInodeNumber(targetPath));
         }
 
         // The path has not been seen before.
         // Create a new inode number and map it to the target path if and only
         // if the target path is a valid path in iRODS.
+        log_.debug("vfs::lookup - File not found [{}].  Creating new inode if the path is valid ...", targetPath);
 
         try
         {
@@ -322,10 +330,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
             if (isTargetValid)
             {
+                log_.debug("vfs::lookup - Path is valid [{}].  Adding new path to user map and returing new inode ...", targetPath);
                 long newInodeNumber = user.getAndIncrementFileID();
                 user.map(newInodeNumber, targetPath);
                 return toFh(newInodeNumber);
             }
+
+            log_.debug("vfs::lookup - Path is not valid [{}].  Throwing exception! ...", targetPath);
             
             // It is VERY important that this exception is thrown here.
             // It affects how NFS4J continues processing the request.
