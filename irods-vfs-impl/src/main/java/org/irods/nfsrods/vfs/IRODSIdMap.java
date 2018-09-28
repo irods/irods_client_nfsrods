@@ -94,7 +94,7 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
             String principal = _gssCtx.getSrcName().toString();
             Integer rodsUserID = principleUidMap_.get(principal);
 
-            printPrincipalType(principal);
+//            printPrincipalType(principal);
 
             if (rodsUserID == null)
             {
@@ -126,8 +126,6 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
             log_.error(e.getMessage());
         }
 
-        // TODO Investigate if this should be different.
-        // if everything fails return defaults.
         return Subjects.of(NOBODY_UID, NOBODY_GID);
     }
 
@@ -136,6 +134,7 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
         return irodsPrincipleMap_.get(Integer.valueOf(_userID));
     }
 
+    @SuppressWarnings("unused")
     private void printPrincipalType(String _principal)
     {
         try

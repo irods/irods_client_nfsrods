@@ -39,7 +39,6 @@ import org.irods.jargon.core.pub.io.IRODSFileInputStream;
 import org.irods.jargon.core.pub.io.IRODSFileOutputStream;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectType;
-import org.irods.nfsrods.utils.JSONUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,9 +63,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     @Override
     public int access(Inode _inode, int _mode) throws IOException
     {
-        log_.debug("vfs::access");
-        log_.debug("vfs::access - _mode (octal) = {}", Integer.toOctalString(_mode));
-        log_.debug("vfs::access - _mode         = {}", Stat.modeToString(_mode));
         return _mode;
     }
 
@@ -213,7 +209,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     @Override
     public Inode link(Inode _parent, Inode _existing, String _target, Subject _subject) throws IOException
     {
-        log_.debug("vfs::link");
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
@@ -347,14 +342,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             IRODSFile irodsFile = user.getIRODSAccessObjectFactory().getIRODSFileFactory(user.getAccount())
                 .instanceIRODSFile(parentPath.toString(), _path);
 
-            String json = JSONUtils.toJSON(user.getInodeToPathMap());
-            log_.debug("vfs::mkdir - Inode map (before creating new directory) = {}", json);
-            log_.debug("vfs::mkdir - New directory path = {}", irodsFile.getAbsolutePath());
-
             irodsFile.mkdir();
 
             long inodeNumber = user.getAndIncrementFileID();
-            log_.debug("vfs::mkdir - New inode number = {}", inodeNumber);
 
             user.map(inodeNumber, irodsFile.getAbsolutePath());
 
@@ -416,8 +406,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 fileSystemAO.renameDirectory(pathFile, destFile);
             }
 
-            // TODO Is remap needed when moving files iRODS side, or will list be regened
-            // via list() call?
+            // Remap the inode number to the correct path.
+            
             Path oldPath = Paths.get(irodsParentPath);
             Path newPath = Paths.get(destPathString);
 
@@ -500,17 +490,17 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
             IRODSFile file = user.getIRODSAccessObjectFactory().getIRODSFileFactory(user.getAccount())
                 .instanceIRODSFile(parentPath.toString(), _path);
-
-            log_.debug("vfs::remove - Removing data object ...");
+            
+            log_.debug("vfs::remove - Removing object ...");
 
             if (!file.delete())
             {
-                throw new IOException("Failed to delete data object in iRODS.");
+                throw new IOException("Failed to delete object in iRODS.");
             }
-
+            
             user.unmap(getInodeNumber(objectPath), objectPath);
-
-            log_.debug("vfs::remove - Data object removed.");
+            
+            log_.debug("vfs::remove - Object removed.");
         }
         catch (JargonException e)
         {
@@ -596,9 +586,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 // Only allow shrinking.
                 if (_stat.getSize() >= file.length())
                 {
-                    // TODO Should this be an exception?
-                    log_.debug("vfs::setattr - Increasing the size of the file is prohibited!");
-                    return;
+                    throw new IOException("Increasing the size of the file is not supported.");
                 }
                 
                 byte[] bytes = new byte[(int) _stat.getSize()];
@@ -697,7 +685,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             try (IRODSFileOutputStream fos = fileFactory.instanceIRODSFileOutputStream(file))
             {
                 fos.write(_data, (int) _offset, _count);
-                return new WriteResult(_stabilityLevel, _count); // TODO Need to revisit this
+                return new WriteResult(_stabilityLevel, _count); // TODO Need to revisit this.
             }
         }
         catch (IOException | JargonException e)
@@ -716,14 +704,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         log_.debug("vfs::statPath - _inodeNumber      = {}", _inodeNumber);
         log_.debug("vfs::statPath - _path             = {}", _path);
 
-//        if (_path == null)
-//        {
-//            throw new IllegalArgumentException("null path");
-//        }
-
-//        String path = _path.normalize().toString();
-//        log_.debug("vfs::statPath - Normalized path   = {}", path);
-
         try
         {
             IRODSUser user = getCurrentIRODSUser();
@@ -739,16 +719,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             stat.setCTime(objStat.getCreatedAt().getTime());
             stat.setMTime(objStat.getModifiedAt().getTime());
 
-            // UserAO userAO = user.getIrodsAccessObjectFactory().getUserAO(user.getRootAccount());
-            // StringBuilder sb = new StringBuilder();
-            // sb.append(objStat.getOwnerName());
-            // sb.append("#");
-            // sb.append(objStat.getOwnerZone());
-
             setStatMode(_path.toString(), stat, objStat.getObjectType(), user);
 
             stat.setUid(getUserID());
-            stat.setGid(getUserID()); // TODO Investigate groups (Jargon has ACL support!!!).
+            stat.setGid(getUserID());
             stat.setNlink(1);
             stat.setDev(17);
             stat.setIno((int) _inodeNumber);

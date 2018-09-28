@@ -17,11 +17,8 @@ import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.IRODSServerConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
-import org.irods.nfsrods.utils.JSONUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 public class IRODSUser
 {
@@ -86,29 +83,11 @@ public class IRODSUser
 
     public NonBlockingHashMap<Long, Path> getInodeToPathMap()
     {
-        try
-        {
-            log_.debug("getInodeToPathMap :: data = > {}", JSONUtils.toJSON(inodeToPath_));
-        }
-        catch (JsonProcessingException e)
-        {
-            log_.error(e.getMessage());
-        }
-
         return inodeToPath_;
     }
 
     public NonBlockingHashMap<Path, Long> getPathToInodeMap()
     {
-        try
-        {
-            log_.debug("getPathToInodeMap :: data = > {}", JSONUtils.toJSON(pathToInode_));
-        }
-        catch (JsonProcessingException e)
-        {
-            log_.error(e.getMessage());
-        }
-
         return pathToInode_;
     }
 
@@ -171,23 +150,19 @@ public class IRODSUser
     {
         if (inodeToPath_.putIfAbsent(_inodeNumber, _path) != null)
         {
-            // FIXME Add message.
-            throw new IllegalStateException();
+            throw new IllegalStateException("Inode number is already mapped to exisiting path.");
         }
 
         Long otherInodeNumber = pathToInode_.putIfAbsent(_path, _inodeNumber);
 
         if (otherInodeNumber != null)
         {
-            // try rollback
             if (inodeToPath_.remove(_inodeNumber) != _path)
             {
-                // FIXME Add message.
-                throw new IllegalStateException("Cannot remove mapping, rollback failed.");
+                throw new IllegalStateException("Failed to rollback mapping.");
             }
 
-            // FIXME Add message.
-            throw new IllegalStateException("path ");
+            throw new IllegalStateException("Path is already mapped to exisiting inode number.");
         }
     }
 
@@ -197,14 +172,12 @@ public class IRODSUser
 
         if (!_path.equals(removedPath))
         {
-            // FIXME Add message.
-            throw new IllegalStateException();
+            throw new IllegalStateException("Invalid mapping.");
         }
 
         if (pathToInode_.remove(_path) != _inodeNumber)
         {
-            // FIXME Add message.
-            throw new IllegalStateException();
+            throw new IllegalStateException("Invalid mapping.");
         }
         
         availableInodeNumbers_.add(_inodeNumber);
@@ -219,7 +192,7 @@ public class IRODSUser
     @Override
     public String toString()
     {
-        return "IRODSUser{rootAccount=" + proxiedAcct_ + ", userID=" + userID_ + '}';
+        return "IRODSUser{proxiedAccount=" + proxiedAcct_ + ", userID=" + userID_ + '}';
     }
 
 }
