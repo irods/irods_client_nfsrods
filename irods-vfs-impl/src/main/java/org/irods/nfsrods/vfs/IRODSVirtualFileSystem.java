@@ -137,6 +137,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
         catch (JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -257,6 +258,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
         catch (JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -321,6 +323,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
         catch (JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -352,6 +355,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
         catch (JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -421,6 +425,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
         catch (JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -460,6 +465,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
         catch (IOException | JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -504,6 +510,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
         catch (JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -565,6 +572,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             catch (JargonException e)
             {
                 log_.error(e.getMessage());
+                throw new IOException(e);
             }
             finally
             {
@@ -611,6 +619,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             catch (JargonException e)
             {
                 log_.error(e.getMessage());
+                throw new IOException(e);
             }
             finally
             {
@@ -645,6 +654,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 //            catch (JargonException e)
 //            {
 //                log_.error(e.getMessage());
+//                throw new IOException(e);
 //            }
 //            finally
 //            {
@@ -685,11 +695,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             try (IRODSFileOutputStream fos = fileFactory.instanceIRODSFileOutputStream(file))
             {
                 fos.write(_data, (int) _offset, _count);
-                return new WriteResult(_stabilityLevel, _count); // TODO Need to revisit this.
+                return new WriteResult(_stabilityLevel, _count);
             }
         }
         catch (IOException | JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -739,6 +750,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         }
         catch (NumberFormatException | JargonException e)
         {
+            log_.error(e.getMessage());
             throw new IOException(e);
         }
     }
@@ -819,7 +831,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
     private static int calcMode(List<UserFilePermission> _perms)
     {
-        // Permissions are only set for the user and world.
+        // Permissions are only set for the user.
         // TODO Groups will need investigation.
         final int r = 0400; // Read bit
         final int w = 0200; // Write bit
@@ -832,9 +844,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             switch (perm.getFilePermissionEnum())
             {
                 // @formatter:off
-                case OWN:     mode |= (r | w | x); break;
-                case READ:    mode |= r; break;
-                case WRITE:   mode |= w; break;
+                case OWN:   mode |= (r | w | x); break;
+                case READ:  mode |= r; break;
+                case WRITE: mode |= w; break;
                 default:
                 // @formatter:on
             }
