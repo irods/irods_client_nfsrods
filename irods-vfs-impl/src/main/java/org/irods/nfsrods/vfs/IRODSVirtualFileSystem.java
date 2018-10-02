@@ -31,7 +31,9 @@ import org.irods.jargon.core.pub.CollectionAndDataObjectListAndSearchAO;
 import org.irods.jargon.core.pub.DataObjectAO;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystemAO;
+import org.irods.jargon.core.pub.UserAO;
 import org.irods.jargon.core.pub.domain.ObjStat;
+import org.irods.jargon.core.pub.domain.User;
 import org.irods.jargon.core.pub.domain.UserFilePermission;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileFactory;
@@ -731,18 +733,30 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             stat.setMTime(objStat.getModifiedAt().getTime());
 
             setStatMode(_path.toString(), stat, objStat.getObjectType(), user);
+            
+            UserAO uao = aof.getUserAO(user.getAccount());
+            int ownerId = getUserID();
 
-            stat.setUid(getUserID());
-            stat.setGid(getUserID());
+            log_.debug("vfs::statPath - Owner name  = {}", objStat.getOwnerName());
+            
+            if (objStat.getOwnerName() != null && !objStat.getOwnerName().isEmpty())
+            {
+                User iuser = uao.findByName(objStat.getOwnerName());
+                ownerId = Integer.parseInt(iuser.getId());
+            }
+
+            stat.setUid(ownerId);
+            stat.setGid(ownerId);
             stat.setNlink(1);
             stat.setDev(17);
             stat.setIno((int) _inodeNumber);
-            stat.setRdev(17);
+            //stat.setRdev(17);
+            stat.setRdev(0);
             stat.setSize(objStat.getObjSize());
             stat.setFileid((int) _inodeNumber);
             stat.setGeneration(objStat.getModifiedAt().getTime());
 
-            log_.debug("vfs::statPath - User id     = {}", getUserID());
+            log_.debug("vfs::statPath - Owner ID    = {}", ownerId);
             log_.debug("vfs::statPath - Permissions = {}", Stat.modeToString(stat.getMode()));
             log_.debug("vfs::statPath - Stat        = {}", stat);
 
@@ -816,7 +830,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             // TODO This appears to attached to collections automatically made
             // by iRODS (e.g. /tempZone, /tempZone/{home,public}, etc.).
             case COLLECTION_HEURISTIC_STANDIN:
-                _stat.setMode(Stat.S_IFDIR | 0700);
+                _stat.setMode(Stat.S_IFDIR | 0777);
                 break;
 
             case LOCAL_DIR:
