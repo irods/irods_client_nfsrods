@@ -26,13 +26,20 @@ def pep_api_data_obj_rename_post(rule_args, callback, rei):
 	touch(os.path.dirname(str(path)), callback)
 
 # How do I convert the l1descInx to a path?
-def pep_api_data_obj_close_post(rule_args, callback, rei):
+# Pre-hook succeeds at getting the logical path.
+# Post-hook fails for some reason (possibly due to the descriptor being freed).
+# The number of bytes written is not available in either case :(.
+def pep_api_data_obj_close_pre(rule_args, callback, rei):
 	callback.writeLine("serverLog", "data_obj_close")
 	opened_data_obj_input = rule_args[2]
-	callback.writeLine("serverLog", "cond. input = {}".format(str(opened_data_obj_input.condInput)))
+	callback.writeLine("serverLog", "l1descInx     = {}".format(str(opened_data_obj_input.l1descInx)))
+	callback.writeLine("serverLog", "bytes written = {}".format(str(opened_data_obj_input.bytesWritten)))
+	res = callback.msi_get_logical_path_by_fd(opened_data_obj_input.l1descInx)
 	if (opened_data_obj_input.bytesWritten > 0):
+		res = callback.msi_get_logical_path_by_fd(opened_data_obj_input.l1descInx)
+		#callback.writeLine("serverLog", str(res['arguments'][0]))
 		#callback.writeLine("serverLog", "object path = {}".format(str(data_obj_input.objPath)))
-		touch(os.path.dirname(str(data_obj_input.objPath)), callback)
+		#touch(os.path.dirname(str(data_obj_input.objPath)), callback)
 
 def pep_api_data_obj_unlink_post(rule_args, callback, rei):
 	callback.writeLine("serverLog", "data_obj_unlink")

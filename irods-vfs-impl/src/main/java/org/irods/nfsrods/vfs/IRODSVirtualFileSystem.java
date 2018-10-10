@@ -582,6 +582,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             }
         }
 
+        /*
         if (_stat.isDefined(Stat.StatAttribute.SIZE))
         {
             IRODSUser user = getCurrentIRODSUser();
@@ -628,6 +629,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 closeCurrentConnection();
             }
         }
+        */
 
         if (_stat.isDefined(Stat.StatAttribute.ATIME))
         {
@@ -747,6 +749,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
             stat.setUid(ownerId);
             stat.setGid(ownerId);
+//            stat.setUid(getUserID());
+//            stat.setGid(getUserID());
             stat.setNlink(1);
             stat.setDev(17);
             stat.setIno((int) _inodeNumber);
@@ -814,7 +818,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             case COLLECTION:
                 CollectionAO coa = aof.getCollectionAO(_user.getAccount());
-                _stat.setMode(Stat.S_IFDIR | calcMode(coa.listPermissionsForCollection(_path)));
+                _stat.setMode(Stat.S_IFDIR | (0055 | calcMode(coa.listPermissionsForCollection(_path))));
                 break;
 
             case DATA_OBJECT:
@@ -827,7 +831,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             // This is required when the iRODS mount point is NOT set to the client's
             // home directory.
             //
-            // TODO This appears to attached to collections automatically made
+            // TODO This appears to be attached to collections automatically made
             // by iRODS (e.g. /tempZone, /tempZone/{home,public}, etc.).
             case COLLECTION_HEURISTIC_STANDIN:
                 _stat.setMode(Stat.S_IFDIR | 0777);

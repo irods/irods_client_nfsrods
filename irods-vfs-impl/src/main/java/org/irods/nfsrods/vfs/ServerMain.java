@@ -55,7 +55,6 @@ public class ServerMain
             log_.error(e.getMessage());
         }
 
-
         NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
         IRODSFileSystem ifsys = IRODSFileSystem.instance();
         OncRpcSvc nfsSvc = null;
