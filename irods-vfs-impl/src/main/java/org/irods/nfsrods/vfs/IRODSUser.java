@@ -69,6 +69,10 @@ public class IRODSUser
         {
             log_.error(e.getMessage());
         }
+        finally
+        {
+            factory_.closeSessionAndEatExceptions();
+        }
     }
 
     public int getUserID()
