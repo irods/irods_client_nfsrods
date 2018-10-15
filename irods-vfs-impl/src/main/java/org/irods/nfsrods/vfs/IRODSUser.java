@@ -2,8 +2,11 @@ package org.irods.nfsrods.vfs;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
@@ -24,9 +27,9 @@ public class IRODSUser
 {
     private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMap.class);
 
-    private NonBlockingHashMap<Long, Path> inodeToPath_;
-    private NonBlockingHashMap<Path, Long> pathToInode_;
-    private List<Long> availableInodeNumbers_;
+    private Map<Long, Path> inodeToPath_;
+    private Map<Path, Long> pathToInode_;
+    private Set<Long> availableInodeNumbers_;
     private AtomicLong fileID_;
     private IRODSAccessObjectFactory factory_;
     private IRODSAccount proxiedAcct_;
@@ -37,7 +40,7 @@ public class IRODSUser
     {
         inodeToPath_ = new NonBlockingHashMap<>();
         pathToInode_ = new NonBlockingHashMap<>();
-        availableInodeNumbers_ = new ArrayList<>();
+        availableInodeNumbers_ = Collections.synchronizedSet(new HashSet<>());
         fileID_ = new AtomicLong(1); // Inode numbers start at 1
 
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
@@ -85,12 +88,12 @@ public class IRODSUser
         return rootFile_.getAbsolutePath();
     }
 
-    public NonBlockingHashMap<Long, Path> getInodeToPathMap()
+    public Map<Long, Path> getInodeToPathMap()
     {
         return inodeToPath_;
     }
 
-    public NonBlockingHashMap<Path, Long> getPathToInodeMap()
+    public Map<Path, Long> getPathToInodeMap()
     {
         return pathToInode_;
     }
@@ -99,7 +102,11 @@ public class IRODSUser
     {
         if (!availableInodeNumbers_.isEmpty())
         {
-            return availableInodeNumbers_.remove(0);
+            Iterator<Long> it = availableInodeNumbers_.iterator();
+            Long inodeNumber = it.next();
+            it.remove();
+            return inodeNumber;
+            //return availableInodeNumbers_.remove(0);
         }
 
         return fileID_.getAndIncrement();
@@ -152,7 +159,13 @@ public class IRODSUser
 
     public void map(Long _inodeNumber, Path _path)
     {
-        if (inodeToPath_.putIfAbsent(_inodeNumber, _path) != null)
+        log_.debug("map :: mapping inode number to path [{} => {}] ...", _inodeNumber, _path);
+
+        Path otherPath = inodeToPath_.putIfAbsent(_inodeNumber, _path);
+        
+        log_.debug("map :: previously mapped path [{}]", otherPath);
+        
+        if (otherPath != null)
         {
             throw new IllegalStateException("Inode number is already mapped to exisiting path.");
         }
@@ -172,9 +185,13 @@ public class IRODSUser
 
     public void unmap(Long _inodeNumber, Path _path)
     {
-        Path removedPath = inodeToPath_.remove(_inodeNumber);
+        final boolean storeInAvailableInodeNumbersSet = true;
+        unmap(_inodeNumber, _path, storeInAvailableInodeNumbersSet);
+    }
 
-        if (!_path.equals(removedPath))
+    private void unmap(Long _inodeNumber, Path _path, boolean _storeInAvailableInodeNumbersSet)
+    {
+        if (!_path.equals(inodeToPath_.remove(_inodeNumber)))
         {
             throw new IllegalStateException("Invalid mapping.");
         }
@@ -184,12 +201,16 @@ public class IRODSUser
             throw new IllegalStateException("Invalid mapping.");
         }
         
-        availableInodeNumbers_.add(_inodeNumber);
+        if (_storeInAvailableInodeNumbersSet)
+        {
+            availableInodeNumbers_.add(_inodeNumber);
+        }
     }
 
     public void remap(Long _inodeNumber, Path _oldPath, Path _newPath)
     {
-        unmap(_inodeNumber, _oldPath);
+        final boolean storeInAvailableInodeNumbersSet = false;
+        unmap(_inodeNumber, _oldPath, storeInAvailableInodeNumbersSet);
         map(_inodeNumber, _newPath);
     }
 
@@ -198,5 +219,5 @@ public class IRODSUser
     {
         return "IRODSUser{proxiedAccount=" + proxiedAcct_ + ", userID=" + userID_ + '}';
     }
-
+    
 }
