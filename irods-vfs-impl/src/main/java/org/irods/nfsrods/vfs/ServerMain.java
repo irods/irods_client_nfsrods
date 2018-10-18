@@ -51,14 +51,16 @@ public class ServerMain
         }
         catch (IOException e)
         {
-            log_.error("main :: Error reading server config.");
-            log_.error(e.getMessage());
+            log_.error("main :: Error reading server config." + System.lineSeparator() + e.getMessage());
+            System.exit(1);
         }
 
         NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
         IRODSFileSystem ifsys = IRODSFileSystem.instance();
         OncRpcSvc nfsSvc = null;
 
+        Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<IRODSFileSystem>(ifsys, "Closing iRODS connections")));
+        
         try
         {
             IRODSAccessObjectFactory ifactory = ifsys.getIRODSAccessObjectFactory();
@@ -78,6 +80,8 @@ public class ServerMain
                 .withSubjectPropagation()
                 .build();
             // @formatter:on
+
+            Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<OncRpcSvc>(nfsSvc, "Shutting down NFS services")));
 
             ExportFile exportFile = new ExportFile(new File(EXPORTS_CONFIG_PATH));
             VirtualFileSystem vfs = new IRODSVirtualFileSystem(idMapper);
@@ -99,22 +103,13 @@ public class ServerMain
 
             nfsSvc.start();
 
-            log_.info("main :: Press [enter] to shutdown.");
+            log_.info("main :: Press [ctrl-c] to shutdown.");
 
-            System.in.read();
+            Thread.currentThread().join();
         }
-        catch (JargonException | IOException | GSSException e)
+        catch (JargonException | IOException | GSSException | InterruptedException e)
         {
             log_.error(e.getMessage());
-        }
-        finally
-        {
-            log_.info("main :: Shutting down ...");
-
-            close(nfsSvc);
-            close(ifsys);
-
-            log_.info("main :: Shutdown complete.");
         }
     }
     
@@ -135,6 +130,28 @@ public class ServerMain
         catch (Exception e)
         {
             log_.error(e.getMessage());
+        }
+    }
+
+    private static final class ShutdownHandler<T> implements Runnable
+    {
+        private T object_;
+        private String msg_;
+        
+        ShutdownHandler(T _object, String _msg)
+        {
+            object_ = _object;
+            msg_ = _msg;
+        }
+        
+        @Override
+        public void run()
+        {
+            log_.info("main :: {} ...", msg_);
+
+            close(object_);
+
+            log_.info("main :: {} ... done.", msg_);
         }
     }
 }
