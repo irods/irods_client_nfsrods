@@ -7,7 +7,7 @@ An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation s
 - Exposes iRODS through a mount point
 - Clients avoid the need for learning icommands
 - Clients avoid the need to install additional iRODS packages
-- Supports many common *nix commands (e.g. mkdir, truncate, chmod, etc.)
+- Supports many common *nix commands and software (e.g. mkdir, truncate, cat, vim, etc.)
 
 ## Requirements
 - Kerberos
@@ -139,6 +139,9 @@ point like so:
 $ cd <mount_point>/path/to/collection_or_data_object
 ```
 
-### TODOs
+## Logging
+NFSRODS uses Log4j for managing and writing log files. The default config will log messages with a level >= `WARN` to `stdout`. The config file is located at `/path/to/irods_client_nfsrods/irods-vfs-impl/config/log4j.properties`.
+Configuring Log4j is out of scope for this documentation. It should be easy to google steps on this.
+
+## TODOs
 - Implement support for Parallel File Transfers
-- Implement support for connection pooling
