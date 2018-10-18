@@ -123,8 +123,8 @@ public class ServerMain
         try
         {
             // @formatter:off
-            if      (_obj instanceof OncRpcSvc)       ((OncRpcSvc) _obj).stop();
-            else if (_obj instanceof IRODSFileSystem) ((IRODSFileSystem) _obj).closeAndEatExceptions();
+            if      (_obj instanceof OncRpcSvc)       { ((OncRpcSvc) _obj).stop(); }
+            else if (_obj instanceof IRODSFileSystem) { ((IRODSFileSystem) _obj).closeAndEatExceptions(); }
             // @formatter:on
         }
         catch (Exception e)

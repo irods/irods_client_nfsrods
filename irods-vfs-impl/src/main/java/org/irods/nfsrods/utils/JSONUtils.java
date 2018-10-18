@@ -5,7 +5,6 @@ import java.io.IOException;
 
 import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -16,8 +15,6 @@ public class JSONUtils
 {
     // @formatter:off
     private static final ObjectMapper mapper_ = new ObjectMapper()
-        .enable(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES)
-        .enable(JsonParser.Feature.ALLOW_COMMENTS)
         .enable(SerializationFeature.INDENT_OUTPUT)
         .enable(Feature.IGNORE_UNKNOWN);
 
