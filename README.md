@@ -39,7 +39,7 @@ After compiling, you should see output similar to the following:
 [INFO] Reactor Summary:
 [INFO] 
 [INFO] nfs4j-irodsvfs ..................................... SUCCESS [  0.671 s]
-[INFO] irods-vfs-impl ..................................... SUCCESS [ 12.955 s]
+[INFO] nfsrods ............................................ SUCCESS [ 12.955 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
@@ -52,13 +52,13 @@ After compiling, you should see output similar to the following:
 You should also have two new JAR files under the `irods-vfs-impl/target` directory. Listing
 the contents of this directory should produce output similar to the following:
 ```bash
-$ ls -l /path/to/irods_client_nfsrods/irods-vfs-impl/target/
+$ ls -l /path/to/irods_client_nfsrods/irods-vfs-impl/target
 total 11564
 drwxr-xr-x 2 root root     4096 Sep 13 13:10 archive-tmp
 drwxr-xr-x 3 root root     4096 Sep 13 13:10 classes
 drwxr-xr-x 3 root root     4096 Sep 13 13:10 generated-sources
--rw-r--r-- 1 root root 11792342 Sep 13 13:10 irods-vfs-impl-1.0.0-SNAPSHOT-jar-with-dependencies.jar
--rw-r--r-- 1 root root    30246 Sep 13 13:10 irods-vfs-impl-1.0.0-SNAPSHOT.jar
+-rw-r--r-- 1 root root 11792342 Sep 13 13:10 nfsrods-1.0.0-SNAPSHOT-jar-with-dependencies.jar
+-rw-r--r-- 1 root root    30246 Sep 13 13:10 nfsrods-1.0.0-SNAPSHOT.jar
 drwxr-xr-x 2 root root     4096 Sep 13 13:10 maven-archiver
 ```
 
@@ -123,7 +123,7 @@ Each config option is explained below.
 After updating the config file, you should be able to run the server using the following commands:
 ```bash
 $ export NFSRODS_HOME=/path/to/irods_client_nfsrods/irods-vfs-impl
-$ sudo -E java -jar $NFSRODS_HOME/target/irods-vfs-impl-1.0.0-SNAPSHOT-jar-with-dependencies.jar
+$ sudo -E java -jar $NFSRODS_HOME/target/nfsrods-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
 ### Mounting
