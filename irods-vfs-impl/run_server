@@ -1,4 +1,0 @@
-#! /bin/bash
-
-export NFSRODS_HOME=$PWD
-sudo -E java -jar $NFSRODS_HOME/target/nfsrods-1.0.0-SNAPSHOT-jar-with-dependencies.jar
