@@ -30,3 +30,5 @@ JargonVersion.java
 *.*~
 .dbeaver*
 *.swp
+build_jar
+run_server
