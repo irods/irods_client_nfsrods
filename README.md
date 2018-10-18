@@ -10,6 +10,8 @@ An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation s
 - Supports many common *nix commands and software (e.g. mkdir, truncate, cat, vim, etc.)
 
 ## Requirements
+- iRODS v4.2.5
+- iRODS REP for Collection Mtimes
 - Kerberos
 - Java Development Kit (JDK v8)
 - Maven
