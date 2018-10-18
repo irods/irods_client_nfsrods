@@ -24,9 +24,6 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
     private static final int NOBODY_UID = 65534;
     private static final int NOBODY_GID = 65534;
 
-//    private static final int DEFAULT_UID = 1001;
-//    private static final int DEFAULT_GID = 1001;
-
     private final ServerConfig config_;
     private final IRODSAccessObjectFactory factory_;
     private Map<String, Integer> principleUidMap_;
@@ -94,7 +91,7 @@ public class IRODSIdMap implements NfsIdMapping, RpcLoginService
             String principal = _gssCtx.getSrcName().toString();
             Integer rodsUserID = principleUidMap_.get(principal);
 
-//            printPrincipalType(principal);
+            // printPrincipalType(principal);
 
             if (rodsUserID == null)
             {

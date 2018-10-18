@@ -106,7 +106,6 @@ public class IRODSUser
             Long inodeNumber = it.next();
             it.remove();
             return inodeNumber;
-            //return availableInodeNumbers_.remove(0);
         }
 
         return fileID_.getAndIncrement();
@@ -135,13 +134,13 @@ public class IRODSUser
 
             try
             {
-                throw new DataNotFoundException("Cannot establish root at [" + rootFile_ + "].");
+                throw new DataNotFoundException("Cannot establish root at [" + rootFile_ + "]");
             }
             catch (DataNotFoundException e)
             {
                 log_.error(e.getMessage());
             }
-            
+
             return;
         }
 
@@ -162,12 +161,12 @@ public class IRODSUser
         log_.debug("map :: mapping inode number to path [{} => {}] ...", _inodeNumber, _path);
 
         Path otherPath = inodeToPath_.putIfAbsent(_inodeNumber, _path);
-        
+
         log_.debug("map :: previously mapped path [{}]", otherPath);
-        
+
         if (otherPath != null)
         {
-            throw new IllegalStateException("Inode number is already mapped to exisiting path.");
+            throw new IllegalStateException("Inode number is already mapped to exisiting path");
         }
 
         Long otherInodeNumber = pathToInode_.putIfAbsent(_path, _inodeNumber);
@@ -176,10 +175,10 @@ public class IRODSUser
         {
             if (inodeToPath_.remove(_inodeNumber) != _path)
             {
-                throw new IllegalStateException("Failed to rollback mapping.");
+                throw new IllegalStateException("Failed to rollback mapping");
             }
 
-            throw new IllegalStateException("Path is already mapped to exisiting inode number.");
+            throw new IllegalStateException("Path is already mapped to exisiting inode number");
         }
     }
 
@@ -191,16 +190,18 @@ public class IRODSUser
 
     private void unmap(Long _inodeNumber, Path _path, boolean _storeInAvailableInodeNumbersSet)
     {
+        log_.debug("unmap :: unmapping inode number and path [{} => {}] ...", _inodeNumber, _path);
+
         if (!_path.equals(inodeToPath_.remove(_inodeNumber)))
         {
-            throw new IllegalStateException("Invalid mapping.");
+            throw new IllegalStateException("Invalid mapping");
         }
 
         if (pathToInode_.remove(_path) != _inodeNumber)
         {
-            throw new IllegalStateException("Invalid mapping.");
+            throw new IllegalStateException("Invalid mapping");
         }
-        
+
         if (_storeInAvailableInodeNumbersSet)
         {
             availableInodeNumbers_.add(_inodeNumber);
@@ -219,5 +220,4 @@ public class IRODSUser
     {
         return "IRODSUser{proxiedAccount=" + proxiedAcct_ + ", userID=" + userID_ + '}';
     }
-    
 }

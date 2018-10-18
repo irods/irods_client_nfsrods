@@ -43,7 +43,7 @@ public class ServerMain
     public static void main(String[] args) throws JargonException
     {
         ServerConfig config = null;
-        
+
         try
         {
             config = JSONUtils.fromJSON(new File(SERVER_CONFIG_PATH), ServerConfig.class);
@@ -59,8 +59,8 @@ public class ServerMain
         IRODSFileSystem ifsys = IRODSFileSystem.instance();
         OncRpcSvc nfsSvc = null;
 
-        Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<IRODSFileSystem>(ifsys, "Closing iRODS connections")));
-        
+        Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<>(ifsys, "Closing iRODS connections")));
+
         try
         {
             IRODSAccessObjectFactory ifactory = ifsys.getIRODSAccessObjectFactory();
@@ -79,9 +79,9 @@ public class ServerMain
                 .withGssSessionManager(gssSessionMgr)
                 .withSubjectPropagation()
                 .build();
-            // @formatter:on
 
-            Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<OncRpcSvc>(nfsSvc, "Shutting down NFS services")));
+            Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<>(nfsSvc, "Shutting down NFS services")));
+            // @formatter:on
 
             ExportFile exportFile = new ExportFile(new File(EXPORTS_CONFIG_PATH));
             VirtualFileSystem vfs = new IRODSVirtualFileSystem(idMapper);
@@ -112,7 +112,7 @@ public class ServerMain
             log_.error(e.getMessage());
         }
     }
-    
+
     private static void close(Object _obj)
     {
         if (_obj == null)
@@ -137,13 +137,13 @@ public class ServerMain
     {
         private T object_;
         private String msg_;
-        
+
         ShutdownHandler(T _object, String _msg)
         {
             object_ = _object;
             msg_ = _msg;
         }
-        
+
         @Override
         public void run()
         {
