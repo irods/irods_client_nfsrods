@@ -2,28 +2,38 @@
 # NFSRODS Behavior Tests
 # ~~~~~~~~~~~~~~~~~~~~~~
 #
-# Requirement: NFSRODS must be mounted at /mnt/nfsrods.
+# Requirements:
+# - Kerberos principal for the iRODS service account (e.g. rods@REALM).
+# - NFSRODS Docker test container.
+# - NFSRODS must be mounted at /mnt/nfsrods.
+#
+# How to run the tests:
+# $ docker run -d --rm --name irods -h irods_test irods_ub16_postgres
+# $ Configure NFSRODS to point to the container.
+# $ kinit rods
+# $ sudo mount -o sec=krb5,port=2050 <hostname>:/ <mount_point>
+# $ bats behaviour_tests.bat
 #
 
-@test "list contents: /mnt/nfsrods/home/rods" {
+@test "list contents" {
     ls /mnt/nfsrods/home/rods
 }
 
-@test "create/remove data object: /mnt/nfsrods/home/rods/empty.txt" {
+@test "create/remove data object" {
     cd /mnt/nfsrods/home/rods
     local data_object='empty.txt'
     touch $data_object
     rm $data_object
 }
 
-@test "create/remove collection: /mnt/nfsrods/home/rods/test.d" {
+@test "create/remove collection" {
     cd /mnt/nfsrods/home/rods
     local collection='test.d'
     mkdir $collection
     rmdir $collection
 }
 
-@test "write/read non-empty data object: /mnt/nfsrods/home/rods/data_object.txt" {
+@test "write/read non-empty data object" {
     cd /mnt/nfsrods/home/rods
 
     local data_object='data_object.txt'
@@ -36,7 +46,7 @@
     rm $data_object
 }
 
-@test "truncate non-empty data object to 5 bytes: /mnt/nfsrods/home/rods/data_object.txt" {
+@test "truncate non-empty data object to 5 bytes" {
     cd /mnt/nfsrods/home/rods
 
     local data_object='data_object.txt'
@@ -54,7 +64,7 @@
     rm $data_object
 }
 
-@test "rename data object: /mnt/nfsrods/home/rods/data_object.txt -> /mnt/nfsrods/home/rods/renamed.txt" {
+@test "rename data object" {
     cd /mnt/nfsrods/home/rods
 
     local data_object='data_object.txt'
@@ -73,7 +83,7 @@
     rm $new_name
 }
 
-@test "move data object into sub-collection: /mnt/nfsrods/home/rods/data_object.txt -> /mnt/nfsrods/home/rods/col.d/data_object.txt" {
+@test "move data object into sub-collection" {
     cd /mnt/nfsrods/home/rods
 
     local data_object='data_object.txt'
@@ -92,7 +102,7 @@
     rmdir $collection
 }
 
-@test "move collection into sibling collection: /mnt/nfsrods/home/rods/col_0.d -> /mnt/nfsrods/home/rods/col_1.d/col_0.d" {
+@test "move collection into sibling collection" {
     cd /mnt/nfsrods/home/rods
 
     local collection_0='col_0.d'
