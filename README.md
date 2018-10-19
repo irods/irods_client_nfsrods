@@ -143,7 +143,7 @@ $ cd <mount_point>/path/to/collection_or_data_object
 
 ## Logging
 NFSRODS uses Log4j for managing and writing log files. The default config will log messages with a level >= `WARN` to `stdout`. The config file is located at `/path/to/irods_client_nfsrods/irods-vfs-impl/config/log4j.properties`.
-Configuring Log4j is out of scope for this documentation. It should be easy to google steps on this.
+Configuring Log4j is beyond the scope of this documentation. It should be easy to google steps on this.
 
 ## TODOs
 - Implement support for Parallel File Transfers
