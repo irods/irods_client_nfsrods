@@ -31,7 +31,7 @@ mkdir icommands_build
 cd icommands_build
 cmake -GNinja /irods_client_icommands
 ninja package
-dpkg -i irods-*.deb
+dpkg -i *.deb
 
 # Install remaining iRODS packages.
 cd /irods_build

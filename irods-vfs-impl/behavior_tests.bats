@@ -15,27 +15,27 @@
 # $ bats behaviour_tests.bat
 #
 
-@test "list contents" {
+setup() {
+    cd /mnt/nfsrods/home/rods
+}
+
+@test "test list contents of collection" {
     ls /mnt/nfsrods/home/rods
 }
 
-@test "create/remove data object" {
-    cd /mnt/nfsrods/home/rods
+@test "test create/remove data data_object" {
     local data_object='empty.txt'
     touch $data_object
     rm $data_object
 }
 
-@test "create/remove collection" {
-    cd /mnt/nfsrods/home/rods
-    local collection='test.d'
+@test "test create/remove collection" {
+    local collection='col.d'
     mkdir $collection
     rmdir $collection
 }
 
-@test "write/read non-empty data object" {
-    cd /mnt/nfsrods/home/rods
-
+@test "test write/read non-empty data object" {
     local data_object='data_object.txt'
     echo 'Hello, NFSRODS!' > $data_object
 
@@ -46,9 +46,7 @@
     rm $data_object
 }
 
-@test "truncate non-empty data object to 5 bytes" {
-    cd /mnt/nfsrods/home/rods
-
+@test "test truncate non-empty data object to 5 bytes" {
     local data_object='data_object.txt'
     echo 'Hello, NFSRODS!' > $data_object
     run cat $data_object
@@ -64,14 +62,11 @@
     rm $data_object
 }
 
-@test "rename data object" {
-    cd /mnt/nfsrods/home/rods
-
+@test "test rename data object" {
     local data_object='data_object.txt'
-    echo 'Hello, NFSRODS!' > $data_object
-    run cat $data_object
+    touch $data_object
+    run ls $data_object
     [ "$status" -eq 0 ]
-    [ "$output" = "Hello, NFSRODS!" ]
 
     local new_name='renamed.txt'
     mv $data_object $new_name
@@ -83,9 +78,24 @@
     rm $new_name
 }
 
-@test "move data object into sub-collection" {
-    cd /mnt/nfsrods/home/rods
+@test "test rename collection" {
+    local collection='col.d'
+    mkdir $collection
+    run ls
+    [ "$status" -eq 0 ]
+    [ "$output" = "$collection" ]
 
+    local new_name='renamed.d'
+    mv $collection $new_name
+
+    run ls
+    [ "$status" -eq 0 ]
+    [ "$output" = "$new_name" ]
+
+    rmdir $new_name
+}
+
+@test "test move data object into sub-collection" {
     local data_object='data_object.txt'
     touch $data_object
 
@@ -102,9 +112,7 @@
     rmdir $collection
 }
 
-@test "move collection into sibling collection" {
-    cd /mnt/nfsrods/home/rods
-
+@test "test move collection into sibling collection" {
     local collection_0='col_0.d'
     local collection_1='col_1.d'
 
