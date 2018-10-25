@@ -34,10 +34,12 @@ import org.irods.jargon.core.pub.UserAO;
 import org.irods.jargon.core.pub.domain.ObjStat;
 import org.irods.jargon.core.pub.domain.User;
 import org.irods.jargon.core.pub.domain.UserFilePermission;
+import org.irods.jargon.core.pub.io.FileIOOperations;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileFactory;
 import org.irods.jargon.core.pub.io.IRODSFileInputStream;
 import org.irods.jargon.core.pub.io.IRODSFileOutputStream;
+import org.irods.jargon.core.pub.io.IRODSRandomAccessFile;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectType;
 import org.slf4j.Logger;
@@ -461,8 +463,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public int read(Inode _inode, byte[] _data, long _offset, int _count) throws IOException
     {
         log_.debug("vfs::read");
-        log_.debug("vfs::read - _offset = {}", _offset);
-        log_.debug("vfs::read - _count  = {}", _count);
+        log_.debug("vfs::read - _data.length = {}", _data.length);
+        log_.debug("vfs::read - _offset      = {}", _offset);
+        log_.debug("vfs::read - _count       = {}", _count);
 
         IRODSUser user = getCurrentIRODSUser();
         IRODSAccessObjectFactory aof = user.getIRODSAccessObjectFactory();
@@ -471,12 +474,20 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             Path path = getPath(toInodeNumber(_inode));
             IRODSFileFactory ff = aof.getIRODSFileFactory(user.getAccount());
-            IRODSFile file = ff.instanceIRODSFile(path.toString());
+//            IRODSFile file = ff.instanceIRODSFile(path.toString());
+//
+//            try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(file);
+//                 IRODSFileInputStream fis = ff.instanceIRODSFileInputStream(file))
+//            {
+//                return fis.read(_data, 0, _count);
+//            }
 
-            try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(file);
-                 IRODSFileInputStream fis = ff.instanceIRODSFileInputStream(file))
+            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString());
+            
+            try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
-                return fis.read(_data, (int) _offset, _count);
+                file.seek(_offset, FileIOOperations.SeekWhenceType.SEEK_START);
+                return file.read(_data, 0, _count);
             }
         }
         catch (IOException | JargonException e)
@@ -604,20 +615,24 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 
                 // TODO Data should be streamed instead of copied into a buffer.
                 // Very large files could break this sensitive code.
-                byte[] bytes = new byte[(int) _stat.getSize()];
+                //byte[] bytes = new byte[(int) _stat.getSize()];
 
                 try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(file))
                 {
                     // Increase the size of the data object.
                     if (_stat.getSize() >= file.length())
                     {
-                        try (IRODSFileOutputStream fos = ff.instanceIRODSFileOutputStream(file, OpenFlags.WRITE))
+                        byte[] bytes = new byte[(int) (_stat.getSize() - file.length())];
+
+                        try (IRODSFileOutputStream fos = ff.instanceIRODSFileOutputStream(file, OpenFlags.READ_WRITE))
                         {
-                            fos.write(bytes, 0, (int) _stat.getSize());
+                            fos.write(bytes);
                         }
                     }
                     else // Truncate the size of the data object.
                     {
+                        byte[] bytes = new byte[(int) _stat.getSize()];
+
                         try (IRODSFileInputStream fis = ff.instanceIRODSFileInputStream(file))
                         {
                             fis.read(bytes);
@@ -650,14 +665,15 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     {
         throw new UnsupportedOperationException("Not supported yet");
     }
-
+    
     @Override
     public WriteResult write(Inode _inode, byte[] _data, long _offset, int _count, StabilityLevel _stabilityLevel)
         throws IOException
     {
         log_.debug("vfs::write");
-        log_.debug("vfs::write - _offset = {}", _offset);
-        log_.debug("vfs::write - _count  = {}", _count);
+        log_.debug("vfs::write - _data.length = {}", _data.length);
+        log_.debug("vfs::write - _offset      = {}", _offset);
+        log_.debug("vfs::write - _count       = {}", _count);
 
         IRODSUser user = getCurrentIRODSUser();
         IRODSAccessObjectFactory aof = user.getIRODSAccessObjectFactory();
@@ -666,13 +682,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             Path path = getPath(toInodeNumber(_inode));
             IRODSFileFactory ff = aof.getIRODSFileFactory(user.getAccount());
-            IRODSFile file = ff.instanceIRODSFile(path.toString());
-
-            try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(file);
-                 IRODSFileOutputStream fos = ff.instanceIRODSFileOutputStream(file))
+            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString());
+            
+            try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
-                fos.write(_data, (int) _offset, _count);
-                return new WriteResult(_stabilityLevel, _count);
+                file.seek(_offset, FileIOOperations.SeekWhenceType.SEEK_START);
+                file.write(_data, 0, _count);
+                return new WriteResult(StabilityLevel.FILE_SYNC, _count);
             }
         }
         catch (IOException | JargonException e)
@@ -877,6 +893,29 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 file_.close();
             }
             catch (JargonException e)
+            {
+                log_.error(e.getMessage());
+            }
+        }
+    }
+
+    private static class AutoClosedIRODSRandomAccessFile implements AutoCloseable
+    {
+        private final IRODSRandomAccessFile file_;
+
+        AutoClosedIRODSRandomAccessFile(IRODSRandomAccessFile _file)
+        {
+            file_ = _file;
+        }
+
+        @Override
+        public void close()
+        {
+            try
+            {
+                file_.close();
+            }
+            catch (IOException e)
             {
                 log_.error(e.getMessage());
             }
