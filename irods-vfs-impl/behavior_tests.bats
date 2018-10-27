@@ -46,9 +46,31 @@ setup() {
     rm $data_object
 }
 
+@test "test indirect resizing of data object" {
+    local data_object='data_object.txt'
+
+    echo 'Hello, NFSRODS!' > $data_object
+    run cat $data_object
+    [ "$status" -eq 0 ]
+    [ "$output" = "Hello, NFSRODS!" ]
+
+    echo 'Hello, NFSRODS!' >> $data_object
+    run cat $data_object
+    [ "$status" -eq 0 ]
+    [ "$output" = "Hello, NFSRODS!\nHello, NFSRODS!" ]
+
+    echo 'Hello, NFSRODS!' > $data_object
+    run cat $data_object
+    [ "$status" -eq 0 ]
+    [ "$output" = "Hello, NFSRODS!" ]
+
+    rm $data_object
+}
+
 @test "test truncate non-empty data object to 5 bytes" {
     local data_object='data_object.txt'
     echo 'Hello, NFSRODS!' > $data_object
+
     run cat $data_object
     [ "$status" -eq 0 ]
     [ "$output" = "Hello, NFSRODS!" ]

@@ -613,37 +613,61 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 Path path = getPath(toInodeNumber(_inode));
                 IRODSFile file = ff.instanceIRODSFile(path.toString());
                 
-                // TODO Data should be streamed instead of copied into a buffer.
-                // Very large files could break this sensitive code.
-                //byte[] bytes = new byte[(int) _stat.getSize()];
-
                 try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(file))
                 {
-                    // Increase the size of the data object.
-                    if (_stat.getSize() >= file.length())
-                    {
-                        byte[] bytes = new byte[(int) (_stat.getSize() - file.length())];
+                    final int CHUNK_SIZE = 4096;
+                    final long size_diff = _stat.getSize() - file.length();
+                    final long full_chunks = Math.abs(size_diff) / CHUNK_SIZE;
+                    final long remaining_bytes = Math.abs(size_diff) % CHUNK_SIZE;
 
+                    // Increase the size of the data object.
+                    if (size_diff > 0)
+                    {
+                        byte[] chunk = new byte[CHUNK_SIZE];
+
+                        // Open the data object in append mode.
                         try (IRODSFileOutputStream fos = ff.instanceIRODSFileOutputStream(file, OpenFlags.READ_WRITE))
                         {
-                            fos.write(bytes);
+                            for (int i = 0; i < full_chunks; ++i)
+                            {
+                                fos.write(chunk);
+                            }
+                            
+                            if (remaining_bytes > 0)
+                            {
+                                fos.write(chunk, 0, (int) remaining_bytes);
+                            }
                         }
                     }
-                    else // Truncate the size of the data object.
+                    else if (size_diff < 0) // Truncate the size of the data object.
                     {
-                        byte[] bytes = new byte[(int) _stat.getSize()];
+                        String newExt = ".temp_" + toInodeNumber(_inode);
+                        IRODSFile tempFile = ff.instanceIRODSFile(path.toString() + newExt);
 
-                        try (IRODSFileInputStream fis = ff.instanceIRODSFileInputStream(file))
-                        {
-                            fis.read(bytes);
-                        }
+                        byte[] chunk = new byte[CHUNK_SIZE];
 
                         // @formatter:off
-                        try (IRODSFileOutputStream fos = ff.instanceIRODSFileOutputStream(file, OpenFlags.WRITE_TRUNCATE))
+                        try (AutoClosedIRODSFile ac1 = new AutoClosedIRODSFile(tempFile);
+                             IRODSFileInputStream fis = ff.instanceIRODSFileInputStream(file);
+                             IRODSFileOutputStream fos = ff.instanceIRODSFileOutputStream(tempFile))
                         // @formatter:on
                         {
-                            fos.write(bytes, 0, (int) _stat.getSize());
+                            for (int i = 0; i < full_chunks; ++i)
+                            {
+                                fis.read(chunk);
+                                fos.write(chunk);
+                            }
+
+                            if (remaining_bytes > 0)
+                            {
+                                fis.read(chunk, 0, (int) remaining_bytes);
+                                fos.write(chunk, 0, (int) remaining_bytes);
+                            }
                         }
+                        
+                        // Rename data objects.
+                        file.delete();
+                        tempFile.renameTo(file);
                     }
                 }
             }
