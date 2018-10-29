@@ -474,14 +474,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             Path path = getPath(toInodeNumber(_inode));
             IRODSFileFactory ff = aof.getIRODSFileFactory(user.getAccount());
-//            IRODSFile file = ff.instanceIRODSFile(path.toString());
-//
-//            try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(file);
-//                 IRODSFileInputStream fis = ff.instanceIRODSFileInputStream(file))
-//            {
-//                return fis.read(_data, 0, _count);
-//            }
-
             IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString());
             
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
@@ -615,6 +607,15 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 
                 try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(file))
                 {
+                    // Delete everything in the data object.
+                    // TODO See if there is a better way to do this.
+                    if (_stat.getSize() == 0)
+                    {
+                        file.delete();
+                        file.createNewFile();
+                        return;
+                    }
+
                     final int CHUNK_SIZE = 4096;
                     final long size_diff = _stat.getSize() - file.length();
                     final long full_chunks = Math.abs(size_diff) / CHUNK_SIZE;
