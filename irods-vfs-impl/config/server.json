@@ -9,7 +9,7 @@
     "irods_server": {
         "zone": "tempZone",
         "host": "kdd-ws",
-        "port": 1247,
+        "port": 9000,
         "default_resource": "demoResc"
     },
 

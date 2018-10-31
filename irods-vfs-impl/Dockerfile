@@ -9,7 +9,7 @@ RUN apt-get update && \
     apt-get install -y apt-transport-https git vim postgresql wget lsb-release ninja-build python \
                        libssl-dev libpam0g-dev unixodbc-dev libkrb5-dev sudo libfuse-dev libcurl4-gnutls-dev \
                        libbz2-dev python-psutil python-requests libxml2-dev zlib1g-dev odbc-postgresql python-dev \
-                       make gcc help2man libjson-perl python-jsonschema super lsof
+                       make gcc help2man libjson-perl python-jsonschema super lsof jq
 
 # Setup ICAT database.
 ADD db_commands.txt /
