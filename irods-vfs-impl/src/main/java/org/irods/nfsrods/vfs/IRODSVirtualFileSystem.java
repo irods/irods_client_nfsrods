@@ -761,9 +761,19 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 User iuser = uao.findByName(objStat.getOwnerName());
                 ownerId = Integer.parseInt(iuser.getId());
             }
-
+            
+            // TODO Postponed until a decision has been made on standardizing metadata
+            // attributes (see https://github.com/irods_rfcs/0004_standard_metadata_attributes.md).
+//            int groupId = getGroupIdFromMetaData(user, _path.toString());
+//            
+//            if (-1 == groupId)
+//            {
+//                groupId = ownerId;
+//            }
+            int groupId = ownerId;
+            
             stat.setUid(ownerId);
-            stat.setGid(ownerId);
+            stat.setGid(groupId);
             stat.setNlink(1);
             stat.setDev(17);
             stat.setIno((int) _inodeNumber);
@@ -774,6 +784,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             stat.setGeneration(objStat.getModifiedAt().getTime());
 
             log_.debug("vfs::statPath - Owner ID    = {}", ownerId);
+            log_.debug("vfs::statPath - Group ID    = {}", groupId);
             log_.debug("vfs::statPath - Permissions = {}", Stat.modeToString(stat.getMode()));
             log_.debug("vfs::statPath - Stat        = {}", stat);
 
@@ -821,6 +832,34 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     {
         return Longs.fromByteArray(_inode.getFileId());
     }
+
+//    private static int getGroupIdFromMetaData(IRODSUser _user, String _path)
+//    {
+//        IRODSAccessObjectFactory aof = _user.getIRODSAccessObjectFactory();
+//        
+//        try
+//        {
+//            DataObjectAO dao = aof.getDataObjectAO(_user.getAccount());
+//            List<MetaDataAndDomainData> metadata = dao.findMetadataValuesForDataObject(_path);
+//
+//            if (!metadata.isEmpty())
+//            {
+//                for (MetaDataAndDomainData md : metadata)
+//                {
+//                    if ("filesystem::gid".equals(md.getAvuAttribute()))
+//                    {
+//                        return Integer.parseInt(md.getAvuValue());
+//                    }
+//                }
+//            }
+//        }
+//        catch (JargonException e)
+//        {
+//            log_.error(e.getMessage());
+//        }
+//        
+//        return -1;
+//    }
 
     private static void setStatMode(String _path, Stat _stat, ObjectType _objType, IRODSUser _user)
         throws JargonException
