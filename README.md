@@ -11,7 +11,7 @@ An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation s
 
 ## Requirements
 - iRODS v4.2.5
-- iRODS REP for Collection Mtimes
+- [iRODS REP for Collection Mtime](https://github.com/irods/irods_rule_engine_plugin_update_collection_mtime)
 - Kerberos
 - Java Development Kit (JDK v8)
 - Maven
