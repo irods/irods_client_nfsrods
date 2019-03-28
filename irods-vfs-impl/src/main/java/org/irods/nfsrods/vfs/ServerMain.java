@@ -13,8 +13,6 @@ import org.dcache.nfs.vfs.VirtualFileSystem;
 import org.dcache.oncrpc4j.rpc.OncRpcProgram;
 import org.dcache.oncrpc4j.rpc.OncRpcSvc;
 import org.dcache.oncrpc4j.rpc.OncRpcSvcBuilder;
-import org.dcache.oncrpc4j.rpc.gss.GssSessionManager;
-import org.ietf.jgss.GSSException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
@@ -27,10 +25,10 @@ import org.slf4j.LoggerFactory;
 public class ServerMain
 {
     // @formatter:off
-    private static final String NFSRODS_HOME        = System.getenv("NFSRODS_HOME");
-    private static final String LOGGER_CONFIG_PATH  = NFSRODS_HOME + "/config/log4j.properties";
-    private static final String SERVER_CONFIG_PATH  = NFSRODS_HOME + "/config/server.json";
-    private static final String EXPORTS_CONFIG_PATH = NFSRODS_HOME + "/config/exports";
+    private static final String NFSRODS_CONFIG_HOME = System.getenv("NFSRODS_CONFIG_HOME");
+    private static final String LOGGER_CONFIG_PATH  = NFSRODS_CONFIG_HOME + "/log4j.properties";
+    private static final String SERVER_CONFIG_PATH  = NFSRODS_CONFIG_HOME + "/server.json";
+    private static final String EXPORTS_CONFIG_PATH = NFSRODS_CONFIG_HOME + "/exports";
     // @formatter:on
 
     static
@@ -67,16 +65,11 @@ public class ServerMain
             IRODSIdMap idMapper = new IRODSIdMap(config, ifactory);
 
             // @formatter:off
-            GssSessionManager gssSessionMgr = new GssSessionManager(idMapper,
-                                                                    nfsSvrConfig.getKerberosServicePrincipal(),
-                                                                    nfsSvrConfig.getKerberosKeytab());
-
             nfsSvc = new OncRpcSvcBuilder()
                 .withPort(nfsSvrConfig.getPort())
                 .withTCP()
                 .withAutoPublish()
                 .withWorkerThreadIoStrategy()
-                .withGssSessionManager(gssSessionMgr)
                 .withSubjectPropagation()
                 .build();
 
@@ -84,7 +77,7 @@ public class ServerMain
             // @formatter:on
 
             ExportFile exportFile = new ExportFile(new File(EXPORTS_CONFIG_PATH));
-            VirtualFileSystem vfs = new IRODSVirtualFileSystem(idMapper);
+            VirtualFileSystem vfs = new IRODSVirtualFileSystem(config, ifactory, idMapper);
 
             // @formatter:off
             NFSServerV41 nfs4 = new NFSServerV41.Builder()
@@ -107,7 +100,7 @@ public class ServerMain
 
             Thread.currentThread().join();
         }
-        catch (JargonException | IOException | GSSException | InterruptedException e)
+        catch (JargonException | IOException | InterruptedException e)
         {
             log_.error(e.getMessage());
         }
