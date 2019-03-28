@@ -49,4 +49,12 @@ public class JSONUtils
     {
         return mapper_.readValue(_file, _class);
     }
+
+    public static <T> T fromJSON(File _file, TypeReference<T> _typeRef)
+        throws JsonParseException,
+        JsonMappingException,
+        IOException
+    {
+        return mapper_.readValue(_file, _typeRef);
+    }
 }

@@ -1,1 +1,1 @@
-/ *(rw,sec=krb5)
+/ *(rw,sec=sys,no_root_squash)
