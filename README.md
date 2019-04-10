@@ -1,6 +1,8 @@
 # NFSRODS
 An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation supporting the iRODS Data Grid.
 
+![NFSRODS network diagram](nfsrods_diagram.png)
+
 ## Features
 - Configurable
 - Exposes iRODS through a mount point
