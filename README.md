@@ -57,7 +57,13 @@ You'll need to set each option to match your iRODS environment. Each option is e
         // We recommend setting this to the zone. Using the zone as the root
         // collection allows all clients to access shared collections and data
         // objects outside of their home collection.
-        "irods_mount_point": "/tempZone"
+        "irods_mount_point": "/tempZone",
+
+        // The refresh time (in minutes) for cached user information.
+        "user_information_refresh_time_in_minutes": 60,
+
+        // The refresh time (in seconds) for cached stat information.
+        "file_information_refresh_time_in_seconds": 2
     },
 
     // This section defines the location of the iRODS server being presented

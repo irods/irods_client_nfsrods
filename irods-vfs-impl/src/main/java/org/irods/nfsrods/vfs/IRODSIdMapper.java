@@ -18,6 +18,7 @@ import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
+import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,9 +30,9 @@ import com.sun.jna.Structure;
 import com.sun.jna.Structure.FieldOrder;
 import com.sun.jna.ptr.IntByReference;
 
-public class IRODSIdMap implements NfsIdMapping
+public class IRODSIdMapper implements NfsIdMapping
 {
-    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMap.class);
+    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMapper.class);
     
     private static final LibC libc_ = (LibC) Native.load("c", LibC.class);
 
@@ -41,33 +42,31 @@ public class IRODSIdMap implements NfsIdMapping
     public static final String NOBODY_USER  = libc_.getpwuid(NOBODY_UID).name;
     public static final String NOBODY_GROUP = libc_.getgrgid(NOBODY_GID).name;
 
-    private final ServerConfig config_;
-    private final IRODSAccessObjectFactory factory_;
-    private Map<String, Integer> principalToUidMap_;
-    private Map<Integer, IRODSUser> uidToPrincipalMap_;
+    private ServerConfig config_;
+    private IRODSAccessObjectFactory factory_;
+    private Map<String, Integer> nameToUidMap_;
+    private Map<Integer, IRODSUser> uidToNameMap_;
     private ScheduledExecutorService scheduler_;
     private ReadWriteLock purgeUsersLock_;
 
-    public IRODSIdMap(ServerConfig _config, IRODSAccessObjectFactory _factory)
+    public IRODSIdMapper(ServerConfig _config, IRODSAccessObjectFactory _factory)
         throws IOException
     {
         config_ = _config;
         factory_ = _factory;
-        principalToUidMap_ = new NonBlockingHashMap<>();
-        uidToPrincipalMap_ = new NonBlockingHashMap<>();
+        nameToUidMap_ = new NonBlockingHashMap<>();
+        uidToNameMap_ = new NonBlockingHashMap<>();
         scheduler_ = Executors.newSingleThreadScheduledExecutor();
         purgeUsersLock_ = new ReentrantReadWriteLock();
         
         initProxyAccount(_config);
-        
-        scheduler_.scheduleAtFixedRate(new PurgeUsersRunnable(config_, principalToUidMap_, uidToPrincipalMap_,
-                                                              purgeUsersLock_), 0, 10, TimeUnit.MINUTES);
+        initSchedulerForPurgingUsers(_config);
     }
-
+    
     @Override
     public int principalToGid(String _principal)
     {
-        log_.debug("principalToGid :: _principal = {}", _principal);
+        log_.debug("principalToGid - _principal = {}", _principal);
         
         return Integer.parseInt(_principal);
     }
@@ -75,7 +74,7 @@ public class IRODSIdMap implements NfsIdMapping
     @Override
     public String gidToPrincipal(int _id)
     {
-        log_.debug("gidToPrincipal :: _id = {}", _id);
+        log_.debug("gidToPrincipal - _id = {}", _id);
         
         return String.valueOf(_id);
     }
@@ -83,7 +82,7 @@ public class IRODSIdMap implements NfsIdMapping
     @Override
     public int principalToUid(String _principal)
     {
-        log_.debug("principalToUid :: _principal = {}", _principal);
+        log_.debug("principalToUid - _principal = {}", _principal);
         
         return Integer.parseInt(_principal);
     }
@@ -91,36 +90,48 @@ public class IRODSIdMap implements NfsIdMapping
     @Override
     public String uidToPrincipal(int _id)
     {
-        log_.debug("uidToPrincipal :: _id = {}", _id);
+        log_.debug("uidToPrincipal - _id = {}", _id);
 
         return String.valueOf(_id);
     }
 
     public int getUidForUser(String _name)
     {
-        if (principalToUidMap_.containsKey(_name))
+        if (_name == null || _name.isEmpty())
         {
-            return principalToUidMap_.get(_name);
+            log_.error("getUidForUser - Name argument is null. Returning uid {}", NOBODY_UID);
+            return NOBODY_UID;
+        }
+
+        if (nameToUidMap_.containsKey(_name))
+        {
+            return nameToUidMap_.get(_name);
         }
         
         __password p = libc_.getpwnam(_name);
         
         if (p == null)
         {
-            log_.debug("getUidForUser :: User not found. Returning uid {}", NOBODY_UID);
+            log_.debug("getUidForUser - User not found. Returning uid {}", NOBODY_UID);
             return NOBODY_UID;
         }
         
-        log_.debug("getUidForUser :: User found! Returning uid {}", p.uid);
+        log_.debug("getUidForUser - User found! Returning uid {}", p.uid);
 
         return p.uid;
     }
     
     public int getGidForUser(String _name)
     {
-        if (principalToUidMap_.containsKey(_name))
+        if (_name == null || _name.isEmpty())
         {
-            IRODSUser user = uidToPrincipalMap_.get(principalToUidMap_.get(_name));
+            log_.error("getGidForUser - Name argument is null. Returning gid {}", NOBODY_GID);
+            return NOBODY_UID;
+        }
+
+        if (nameToUidMap_.containsKey(_name))
+        {
+            IRODSUser user = uidToNameMap_.get(nameToUidMap_.get(_name));
             return user.getGroupID();
         }
         
@@ -128,11 +139,11 @@ public class IRODSIdMap implements NfsIdMapping
         
         if (p == null)
         {
-            log_.debug("getGidForUser :: User not found. Returning group name {}", NOBODY_GID);
+            log_.debug("getGidForUser - User not found. Returning group name {}", NOBODY_GID);
             return NOBODY_GID;
         }
         
-        log_.debug("getGidForUser :: User found! Returning group name {}", p.gid);
+        log_.debug("getGidForUser - User found! Returning group name {}", p.gid);
 
         return p.gid;
     }
@@ -141,7 +152,7 @@ public class IRODSIdMap implements NfsIdMapping
     {
         log_.debug("resolveUser - _userID = {}", _uid);
 
-        IRODSUser user = uidToPrincipalMap_.get(_uid);
+        IRODSUser user = uidToNameMap_.get(_uid);
         
         if (user == null)
         {
@@ -156,10 +167,10 @@ public class IRODSIdMap implements NfsIdMapping
             
             user = new IRODSUser(p.name, p.uid, p.gid, config_, factory_);
 
-            principalToUidMap_.put(p.name, p.uid);
-            uidToPrincipalMap_.put(p.uid, user);
+            nameToUidMap_.put(p.name, p.uid);
+            uidToNameMap_.put(p.uid, user);
 
-            log_.debug("IRODSIdMap :: userName = {}", p.name);
+            log_.debug("resolveUser - userName = {}", p.name);
         }
         
         return user;
@@ -170,8 +181,15 @@ public class IRODSIdMap implements NfsIdMapping
         IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
         IRODSUser user = new IRODSUser(proxyConfig.getUsername(), 0, 0, config_, factory_);
 
-        principalToUidMap_.put(proxyConfig.getUsername(), 0);
-        uidToPrincipalMap_.put(0, user);
+        nameToUidMap_.put(proxyConfig.getUsername(), 0);
+        uidToNameMap_.put(0, user);
+    }
+
+    private void initSchedulerForPurgingUsers(ServerConfig _config) throws IOException
+    {
+        NFSServerConfig nfsConfig = _config.getNfsServerConfig();
+        PurgeUsersRunnable runnable = new PurgeUsersRunnable(config_, nameToUidMap_, uidToNameMap_, purgeUsersLock_);
+        scheduler_.scheduleAtFixedRate(runnable, 0, nfsConfig.getUserInfoRefreshTimeInMinutes(), TimeUnit.MINUTES);
     }
 
     @FieldOrder({"name", "passwd", "uid", "gid", "gecos", "dir", "shell"})
@@ -260,7 +278,7 @@ public class IRODSIdMap implements NfsIdMapping
 
             if (update.value)
             {
-                log_.info("scheduler :: Purging users ...");
+                log_.info("scheduler - Purging users ...");
 
                 Lock l = lock_.writeLock();
                 
@@ -271,14 +289,14 @@ public class IRODSIdMap implements NfsIdMapping
                     princToUid_.clear();
                     uidToPrinc_.clear();
 
-                    IRODSIdMap.this.initProxyAccount(config_);
+                    IRODSIdMapper.this.initProxyAccount(config_);
                 }
                 finally
                 {
                     l.unlock();
                 }
 
-                log_.info("scheduler :: Purging users ... done.");
+                log_.info("scheduler - Purging users ... done.");
             }
         }
     }

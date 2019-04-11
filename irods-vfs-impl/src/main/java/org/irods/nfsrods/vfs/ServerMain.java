@@ -3,6 +3,10 @@ package org.irods.nfsrods.vfs;
 import java.io.File;
 import java.io.IOException;
 
+import javax.cache.CacheManager;
+import javax.cache.Caching;
+import javax.cache.spi.CachingProvider;
+
 import org.apache.log4j.PropertyConfigurator;
 import org.dcache.nfs.ExportFile;
 import org.dcache.nfs.v3.MountServer;
@@ -37,7 +41,7 @@ public class ServerMain
     }
 
     private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
-
+    
     public static void main(String[] args) throws JargonException
     {
         ServerConfig config = null;
@@ -45,24 +49,25 @@ public class ServerMain
         try
         {
             config = JSONUtils.fromJSON(new File(SERVER_CONFIG_PATH), ServerConfig.class);
-            log_.debug("main :: Server config ==> {}", JSONUtils.toJSON(config));
+            log_.debug("main - Server config ==> {}", JSONUtils.toJSON(config));
         }
         catch (IOException e)
         {
-            log_.error("main :: Error reading server config." + System.lineSeparator() + e.getMessage());
+            log_.error("main - Error reading server config." + System.lineSeparator() + e.getMessage());
             System.exit(1);
         }
 
         NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
         IRODSFileSystem ifsys = IRODSFileSystem.instance();
         OncRpcSvc nfsSvc = null;
-
+        
         Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<>(ifsys, "Closing iRODS connections")));
 
-        try
+        try (CachingProvider cachingProvider = Caching.getCachingProvider();
+             CacheManager cacheManager = cachingProvider.getCacheManager();)
         {
             IRODSAccessObjectFactory ifactory = ifsys.getIRODSAccessObjectFactory();
-            IRODSIdMap idMapper = new IRODSIdMap(config, ifactory);
+            IRODSIdMapper idMapper = new IRODSIdMapper(config, ifactory);
 
             // @formatter:off
             nfsSvc = new OncRpcSvcBuilder()
@@ -77,7 +82,7 @@ public class ServerMain
             // @formatter:on
 
             ExportFile exportFile = new ExportFile(new File(EXPORTS_CONFIG_PATH));
-            VirtualFileSystem vfs = new IRODSVirtualFileSystem(config, ifactory, idMapper);
+            VirtualFileSystem vfs = new IRODSVirtualFileSystem(config, ifactory, idMapper, cacheManager);
 
             // @formatter:off
             NFSServerV41 nfs4 = new NFSServerV41.Builder()
@@ -96,7 +101,7 @@ public class ServerMain
 
             nfsSvc.start();
 
-            log_.info("main :: Press [ctrl-c] to shutdown.");
+            log_.info("main - Press [ctrl-c] to shutdown.");
 
             Thread.currentThread().join();
         }
@@ -140,11 +145,11 @@ public class ServerMain
         @Override
         public void run()
         {
-            log_.info("main :: {} ...", msg_);
+            log_.info("main - {} ...", msg_);
 
             close(object_);
 
-            log_.info("main :: {} ... done.", msg_);
+            log_.info("main - {} ... done.", msg_);
         }
     }
 }
