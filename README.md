@@ -122,4 +122,6 @@ $ cd <mount_point>/path/to/collection_or_data_object
 ```
 
 ## TODOs
+- Implement support for SSL connections to iRODS
 - Implement support for Parallel File Transfers
+- Provide POSIX Test Suite coverage
