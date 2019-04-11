@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 
 public class IRODSUser
 {
-    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMap.class);
+    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMapper.class);
 
     private IRODSAccount proxiedAcct_;
     private int userID_;
@@ -30,8 +30,8 @@ public class IRODSUser
         String zone = rodsSvrConfig.getZone();
 
         String rootPath = Paths.get(nfsSvrConfig.getIRODSMountPoint()).toString();
-        log_.debug("IRODSUser :: iRODS mount point = {}", rootPath);
-        log_.debug("IRODSUser :: Creating proxy for username [{}] ...", _username);
+        log_.debug("IRODSUser - iRODS mount point = {}", rootPath);
+        log_.debug("IRODSUser - Creating proxy for username [{}] ...", _username);
 
         userID_ = _uid;
         groupID_ = _gid;

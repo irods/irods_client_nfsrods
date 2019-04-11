@@ -22,16 +22,16 @@ import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class ObjectMap
+class InodeToPathMapper
 {
-    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMap.class);
+    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMapper.class);
 
     private Map<Long, Path> inodeToPath_;
     private Map<Path, Long> pathToInode_;
     private Set<Long> availableInodeNumbers_;
     private AtomicLong fileID_;
 
-    public ObjectMap(ServerConfig _config, IRODSAccessObjectFactory _factory) throws JargonException
+    public InodeToPathMapper(ServerConfig _config, IRODSAccessObjectFactory _factory) throws JargonException
     {
         inodeToPath_ = new NonBlockingHashMap<>();
         pathToInode_ = new NonBlockingHashMap<>();
@@ -47,11 +47,11 @@ class ObjectMap
         String zone = rodsSvrConfig.getZone();
 
         String rootPath = Paths.get(nfsSvrConfig.getIRODSMountPoint()).toString();
-        log_.debug("ObjectMap :: iRODS mount point = {}", rootPath);
+        log_.debug("ObjectMap - iRODS mount point = {}", rootPath);
 
         IRODSAccount acct = IRODSAccount.instanceWithProxy(rodsSvrConfig.getHost(), rodsSvrConfig.getPort(), adminAcct,
-                                                      adminPw, rootPath, zone, rodsSvrConfig.getDefaultResource(),
-                                                      adminAcct, zone);
+                                                           adminPw, rootPath, zone, rodsSvrConfig.getDefaultResource(),
+                                                           adminAcct, zone);
 
         establishRoot(_factory.getIRODSFileFactory(acct).instanceIRODSFile(rootPath));
     }
@@ -97,11 +97,11 @@ class ObjectMap
             return;
         }
 
-        log_.debug("establishRoot :: Mapping root to [{}] ...", _irodsMountPoint);
+        log_.debug("establishRoot - Mapping root to [{}] ...", _irodsMountPoint);
 
         map(getAndIncrementFileID(), _irodsMountPoint.getAbsolutePath());
 
-        log_.debug("establishRoot :: Mapping successful.");
+        log_.debug("establishRoot - Mapping successful.");
     }
 
     public void map(Long _inodeNumber, String _path)
@@ -111,11 +111,11 @@ class ObjectMap
 
     public void map(Long _inodeNumber, Path _path)
     {
-        log_.debug("map :: mapping inode number to path [{} => {}] ...", _inodeNumber, _path);
+        log_.debug("map - mapping inode number to path [{} => {}] ...", _inodeNumber, _path);
 
         Path otherPath = inodeToPath_.putIfAbsent(_inodeNumber, _path);
 
-        log_.debug("map :: previously mapped path [{}]", otherPath);
+        log_.debug("map - previously mapped path [{}]", otherPath);
 
         if (otherPath != null)
         {
@@ -143,7 +143,7 @@ class ObjectMap
 
     private void unmap(Long _inodeNumber, Path _path, boolean _storeInAvailableInodeNumbersSet)
     {
-        log_.debug("unmap :: unmapping inode number and path [{} => {}] ...", _inodeNumber, _path);
+        log_.debug("unmap - unmapping inode number and path [{} => {}] ...", _inodeNumber, _path);
 
         if (!_path.equals(inodeToPath_.remove(_inodeNumber)))
         {
