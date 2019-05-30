@@ -11,7 +11,7 @@ An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation s
 - Supports many common *nix commands and software (e.g. mkdir, truncate, cat, vim, etc.)
 
 ## Requirements
-- iRODS v4.2.5+
+- iRODS v4.2.6
 - [iRODS REP for Collection Mtime](https://github.com/irods/irods_rule_engine_plugin_update_collection_mtime)
 - Docker (as of this writing, v18.09.0)
 - OS NFS packages (e.g. Ubuntu 16.04: nfs-common)
@@ -33,8 +33,8 @@ There are three config files located under `/path/to/irods_client_nfsrods/irods-
 
 The first step in configuring the server is to copy these files into another location on disk like so:
 ```bash
-$ mkdir ~/nfsrods_configs
-$ cp /path/to/irods_client_nfsrods/irods-vfs-impl/config/* ~/nfsrods_configs
+$ mkdir ~/nfsrods_config
+$ cp /path/to/irods_client_nfsrods/irods-vfs-impl/config/* ~/nfsrods_config
 ```
 These files will be mounted into the NFSRODS docker container. This will be discussed later.
 
@@ -62,13 +62,13 @@ You'll need to set each option to match your iRODS environment. Each option is e
         // The refresh time (in minutes) for cached user information.
         "user_information_refresh_time_in_minutes": 60,
 
-        // The refresh time (in seconds) for cached stat information.
-        "file_information_refresh_time_in_seconds": 2
+        // The refresh time (in milliseconds) for cached stat information.
+        "file_information_refresh_time_in_milliseconds": 1000
     },
 
     // This section defines the location of the iRODS server being presented
     // by NFSRODS. The NFSRODS server can only be configured to present a single zone.
-    "irods_server": {
+    "irods_client": {
         "host": "hostname",
         "port": 1247,
         "zone": "tempZone",
@@ -94,7 +94,7 @@ After updating the config file, you should be able to run the server using the f
 ```bash
 $ docker run -d --name nfsrods \
              -p <public_port>:2049 \
-             -v </full/path/to/nfsrods_configs>:/nfsrods_ext:ro \
+             -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
              -v /etc/passwd:/etc/passwd:ro \
              -v /etc/shadow:/etc/shadow:ro \
              nfsrods
@@ -126,6 +126,9 @@ If you do not receive any errors after mounting, then you should be able to acce
 ```bash
 $ cd <mount_point>/path/to/collection_or_data_object
 ```
+
+#### Things To Consider
+Depending on your environment and deployment of NFSRODS, you may want to consider passing `lookupcache=none` to the mount command. This instructs the kernel to NOT cache directory entries which forces NFSRODS to lookup information about a directory on every request. While doing this will make NFSRODS less responsive, the benefit is that NFSRODS is less likely to leak information between users if they are operating within the same directory.
 
 ## TODOs
 - Implement support for SSL connections to iRODS

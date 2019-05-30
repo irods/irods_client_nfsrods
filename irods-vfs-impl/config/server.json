@@ -3,7 +3,7 @@
         "port": 2049,
         "irods_mount_point": "/tempZone",
         "user_information_refresh_time_in_minutes": 60,
-        "file_information_refresh_time_in_seconds": 2
+        "file_information_refresh_time_in_milliseconds": 1000
     },
 
     "irods_server": {

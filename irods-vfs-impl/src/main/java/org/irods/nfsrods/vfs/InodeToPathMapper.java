@@ -16,7 +16,7 @@ import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
-import org.irods.nfsrods.config.IRODSServerConfig;
+import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ class InodeToPathMapper
         
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
         IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
-        IRODSServerConfig rodsSvrConfig = _config.getIRODSServerConfig();
+        IRODSClientConfig rodsSvrConfig = _config.getIRODSClientConfig();
 
         String adminAcct = proxyConfig.getUsername();
         String adminPw = proxyConfig.getPassword();

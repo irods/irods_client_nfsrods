@@ -5,7 +5,7 @@ import java.nio.file.Paths;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
-import org.irods.nfsrods.config.IRODSServerConfig;
+import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
@@ -23,7 +23,7 @@ public class IRODSUser
     {
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
         IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
-        IRODSServerConfig rodsSvrConfig = _config.getIRODSServerConfig();
+        IRODSClientConfig rodsSvrConfig = _config.getIRODSClientConfig();
 
         String adminAcct = proxyConfig.getUsername();
         String adminPw = proxyConfig.getPassword();
