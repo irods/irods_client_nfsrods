@@ -8,10 +8,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class NFSServerConfig
 {
     // @formatter:off
-    @JsonProperty("port")                                     private int port_;
-    @JsonProperty("irods_mount_point")                        private String iRODSMntPoint_;
-    @JsonProperty("user_information_refresh_time_in_minutes") private int userInfoRefreshTimeInMins_;
-    @JsonProperty("file_information_refresh_time_in_seconds") private int fileInfoRefreshTimeInSecs_;
+    @JsonProperty("port")                                          private int port_;
+    @JsonProperty("irods_mount_point")                             private String iRODSMntPoint_;
+    @JsonProperty("user_information_refresh_time_in_minutes")      private int userInfoRefreshTimeInMins_;
+    @JsonProperty("file_information_refresh_time_in_milliseconds") private int fileInfoRefreshTimeInMillis_;
     
     NFSServerConfig() {}
     // @formatter:on
@@ -35,8 +35,8 @@ public class NFSServerConfig
     }
     
     @JsonIgnore
-    public int getFileInfoRefreshTimeInSeconds()
+    public int getFileInfoRefreshTimeInMilliseconds()
     {
-        return fileInfoRefreshTimeInSecs_;
+        return fileInfoRefreshTimeInMillis_;
     }
 }

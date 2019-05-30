@@ -9,7 +9,7 @@ public class ServerConfig
 {
     // @formatter:off
     @JsonProperty("nfs_server")                private NFSServerConfig nfsServerConfig_;
-    @JsonProperty("irods_server")              private IRODSServerConfig iRODSServerConfig_;
+    @JsonProperty("irods_client")              private IRODSClientConfig iRODSClientConfig_;
     @JsonProperty("irods_proxy_admin_account") private IRODSProxyAdminAccountConfig iRODSProxyAdminAcctConfig_;
     
     ServerConfig() {}
@@ -22,9 +22,9 @@ public class ServerConfig
     }
 
     @JsonIgnore
-    public IRODSServerConfig getIRODSServerConfig()
+    public IRODSClientConfig getIRODSClientConfig()
     {
-        return iRODSServerConfig_;
+        return iRODSClientConfig_;
     }
 
     @JsonIgnore

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class IRODSServerConfig
+public class IRODSClientConfig
 {
     // @formatter:off
     @JsonProperty("host")             private String host_;
@@ -13,7 +13,7 @@ public class IRODSServerConfig
     @JsonProperty("zone")             private String zone_;
     @JsonProperty("default_resource") private String defResc_;
     
-    IRODSServerConfig() {}
+    IRODSClientConfig() {}
     // @formatter:on
 
     @JsonIgnore

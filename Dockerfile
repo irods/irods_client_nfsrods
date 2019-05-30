@@ -10,7 +10,7 @@ RUN wget -qO - https://packages.irods.org/irods-signing-key.asc | apt-key add -;
     apt-get install -y irods-dev irods-externals-cmake3.11.4-0
 
 ENV PATH=/opt/irods-externals/cmake3.11.4-0/bin:$PATH
-ENV NFSRODS_CONFIG_HOME=/nfsrods_ext
+ENV NFSRODS_CONFIG_HOME=/nfsrods_config
 
 ARG _github_account="irods"
 ARG _sha="master"

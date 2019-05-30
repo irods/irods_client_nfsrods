@@ -7,6 +7,7 @@ import java.security.AccessController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.cache.Cache;
 import javax.cache.CacheManager;
@@ -28,6 +29,7 @@ import org.dcache.nfs.vfs.Stat.Type;
 import org.dcache.nfs.vfs.VirtualFileSystem;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
+import org.irods.jargon.core.exception.FileNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.packinstr.DataObjInp.OpenFlags;
 import org.irods.jargon.core.protovalues.FilePermissionEnum;
@@ -46,6 +48,8 @@ import org.irods.jargon.core.pub.io.IRODSFileOutputStream;
 import org.irods.jargon.core.pub.io.IRODSRandomAccessFile;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectType;
+import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
+import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,13 +60,23 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 {
     private static final Logger log_ = LoggerFactory.getLogger(IRODSVirtualFileSystem.class);
 
+    private static final long FIXED_TIMESTAMP = System.currentTimeMillis();
+
+    private static final FsStat FILE_SYSTEM_STAT_INFO = new FsStat(0, 0, 0, 0);
+
     private final IRODSAccessObjectFactory factory_;
     private final IRODSIdMapper idMapper_;
     private final InodeToPathMapper inodeToPathMapper_;
-    private final MutableConfiguration<Path, Stat> cacheConfig_;
-    private final Cache<Path, Stat> statObjectCache_;
-    
-    private static final long FIXED_TIMESTAMP = System.currentTimeMillis();
+    private final IRODSAccount adminAcct_;
+    private final MutableConfiguration<String, Stat> cacheConfig_; // String format: <username>_<path>
+    private final Cache<String, Stat> statObjectCache_;            // String format: <username>_<path>
+
+    // Special paths within iRODS.
+    private final Path ROOT_COLLECTION;
+    private final Path ZONE_COLLECTION;
+    private final Path HOME_COLLECTION;
+    private final Path PUBLIC_COLLECTION;
+    private final Path TRASH_COLLECTION;
 
     public IRODSVirtualFileSystem(ServerConfig _config,
                                   IRODSAccessObjectFactory _factory,
@@ -94,14 +108,36 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         factory_ = _factory;
         idMapper_ = _idMapper;
         inodeToPathMapper_ = new InodeToPathMapper(_config, _factory);
-        
-        int file_info_refresh_time = _config.getNfsServerConfig().getFileInfoRefreshTimeInSeconds();
-        
-        cacheConfig_ = new MutableConfiguration<Path, Stat>()
-            .setTypes(Path.class, Stat.class)
+
+        IRODSClientConfig rodsSvrConfig = _config.getIRODSClientConfig();
+
+        ROOT_COLLECTION = Paths.get("/");
+        ZONE_COLLECTION = ROOT_COLLECTION.resolve(rodsSvrConfig.getZone());
+        HOME_COLLECTION = ZONE_COLLECTION.resolve("home");
+        PUBLIC_COLLECTION = ZONE_COLLECTION.resolve("public");
+        TRASH_COLLECTION = ZONE_COLLECTION.resolve("trash");
+
+        IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
+        Path proxyUserHomeCollection = Paths.get("/", rodsSvrConfig.getZone(), "home", proxyConfig.getUsername());
+        // @formatter:off
+        adminAcct_ = IRODSAccount.instance(rodsSvrConfig.getHost(),
+                                           rodsSvrConfig.getPort(),
+                                           proxyConfig.getUsername(),
+                                           proxyConfig.getPassword(),
+                                           proxyUserHomeCollection.toString(),
+                                           rodsSvrConfig.getZone(),
+                                           rodsSvrConfig.getDefaultResource());
+        // @formatter:on
+
+        int file_info_refresh_time = _config.getNfsServerConfig().getFileInfoRefreshTimeInMilliseconds();
+
+        // @formatter:off
+        cacheConfig_ = new MutableConfiguration<String, Stat>()
+            .setTypes(String.class, Stat.class)
             .setStoreByValue(false)
-            .setExpiryPolicyFactory(CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.SECONDS, file_info_refresh_time)));
-        
+            .setExpiryPolicyFactory(CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.MILLISECONDS, file_info_refresh_time)));
+        // @formatter:on
+
         statObjectCache_ = _cacheManager.createCache("stat_info_cache", cacheConfig_);
     }
 
@@ -163,7 +199,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             IRODSFileFactory ff = factory_.getIRODSFileFactory(user.getAccount());
             IRODSFile newFile = ff.instanceIRODSFile(newPath.toString());
 
-            log_.debug("create - Creating new file at: {}", newFile);
+            log_.debug("create - Creating new file [{}] ...", newFile);
 
             try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(newFile))
             {
@@ -210,7 +246,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     @Override
     public FsStat getFsStat() throws IOException
     {
-        throw new UnsupportedOperationException("Not supported yet");
+        return FILE_SYSTEM_STAT_INFO;
     }
 
     @Override
@@ -252,7 +288,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     @Override
     public Inode link(Inode _parent, Inode _existing, String _target, Subject _subject) throws IOException
     {
-        throw new UnsupportedOperationException("Not supported yet");
+        throw new UnsupportedOperationException("Not supported");
     }
 
     @Override
@@ -265,20 +301,32 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         try
         {
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
-            CollectionAndDataObjectListAndSearchAO listAO = factory_.getCollectionAndDataObjectListAndSearchAO(acct);
-
+            CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(acct);
             Path parentPath = getPath(toInodeNumber(_inode));
-            log_.debug("list - listing contents of [{}] ...", parentPath);
+
+            log_.debug("list - Checking if [{}] has permission to access [{}]", acct.getUserName(), parentPath);
+
+            try
+            {
+                lao.retrieveObjectStatForPath(parentPath.toString());
+            }
+            catch (JargonException e)
+            {
+                log_.debug("list - [{}] does not have permission to access [{}]", acct.getUserName(), parentPath);
+                return new DirectoryStream(DirectoryStream.ZERO_VERIFIER, list);
+            }
+
+            log_.debug("list - Listing contents of [{}] ...", parentPath);
 
             String irodsAbsPath = parentPath.normalize().toString();
 
             List<CollectionAndDataObjectListingEntry> entries;
-            entries = listAO.listDataObjectsAndCollectionsUnderPath(irodsAbsPath);
+            entries = lao.listDataObjectsAndCollectionsUnderPath(irodsAbsPath);
 
             for (CollectionAndDataObjectListingEntry dataObj : entries)
             {
                 Path filePath = parentPath.resolve(dataObj.getPathOrName());
-                log_.debug("list - entry = {}", filePath);
+                log_.debug("list - Entry = {}", filePath);
 
                 long inodeNumber;
 
@@ -324,20 +372,17 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
         try
         {
-            IRODSAccount acct = getCurrentIRODSUser().getAccount();
-            CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(acct);
+            CollectionAndDataObjectListAndSearchAO lao = null;
+            lao = factory_.getCollectionAndDataObjectListAndSearchAO(adminAcct_);
+            boolean isTargetValid = false;
 
-            // @formatter:off
-            boolean isTargetValid = lao.listDataObjectsAndCollectionsUnderPath(parentPath.toString())
-                .stream().anyMatch(obj -> {
-                    if (obj.isCollection())
-                    {
-                        return targetPath.toString().equals(obj.getPathOrName());
-                    }
-
-                    return _path.equals(obj.getPathOrName());
-                });
-            // @formatter:on
+            try
+            {
+                isTargetValid = (lao.retrieveObjectStatForPath(targetPath.toString()) != null);
+            }
+            catch (Exception e)
+            {
+            }
 
             // If the target path is valid, then return an inode object created from
             // the user's mapped paths. Else, create a new mapping and return an
@@ -507,7 +552,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             Path path = getPath(toInodeNumber(_inode));
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
             IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString());
-            
+
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
                 file.seek(_offset, FileIOOperations.SeekWhenceType.SEEK_START);
@@ -528,7 +573,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     @Override
     public String readlink(Inode _inode) throws IOException
     {
-        throw new UnsupportedOperationException("Not supported yet");
+        throw new UnsupportedOperationException("Not supported");
     }
 
     @Override
@@ -578,52 +623,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         // NOP
     }
 
-    private void setPermissions(Inode _inode) throws IOException
+    private void truncate(Inode _inode, Stat _stat) throws IOException
     {
         long inodeNumber = toInodeNumber(_inode);
         Path path = getPath(inodeNumber);
-        Stat latestStat = statPath(path, inodeNumber);
 
-        log_.debug("setPermissions - New mode = {}", Integer.toOctalString(latestStat.getMode()));
-
-        IRODSAccount acct = getCurrentIRODSUser().getAccount();
-
-        try
-        {
-            DataObjectAO dao = factory_.getDataObjectAO(acct);
-            FilePermissionEnum perm = null;
-
-            // @formatter:off
-            switch (latestStat.getMode() & 0700)
-            {
-                case 0700:
-                case 0600: perm = FilePermissionEnum.OWN; break;
-                case 0400: perm = FilePermissionEnum.READ; break;
-                case 0200: perm = FilePermissionEnum.WRITE; break;
-                default:   perm = FilePermissionEnum.NULL; break;
-            }
-            // @formatter:on
-
-            dao.setAccessPermission(acct.getZone(), path.toString(), acct.getUserName(), perm);
-        }
-        catch (JargonException e)
-        {
-            log_.error(e.getMessage());
-            throw new IOException(e);
-        }
-        finally
-        {
-            closeCurrentConnection();
-        }
-    }
-    
-    private void truncate(Inode _inode) throws IOException
-    {
-        long inodeNumber = toInodeNumber(_inode);
-        Path path = getPath(inodeNumber);
-        Stat latestStat = statPath(path, inodeNumber);
-
-        log_.debug("truncate - New size  = {}", latestStat.getSize());
+        log_.debug("truncate - Requested size  = {}", _stat.getSize());
 
         IRODSAccount acct = getCurrentIRODSUser().getAccount();
 
@@ -631,12 +636,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         {
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
             IRODSFile file = ff.instanceIRODSFile(path.toString());
-            
+
             try (AutoClosedIRODSFile ac = new AutoClosedIRODSFile(file))
             {
                 // Delete everything in the data object.
-                // TODO See if there is a better way to do this.
-                if (latestStat.getSize() == 0)
+                if (_stat.getSize() == 0)
                 {
                     log_.trace("truncate - Erasing the contents of the data object ...");
                     file.delete();
@@ -645,9 +649,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 }
 
                 final int CHUNK_SIZE = 4096;
-                final long size_diff = latestStat.getSize() - file.length();
-                final long full_chunks = Math.abs(size_diff) / CHUNK_SIZE;
-                final long remaining_bytes = Math.abs(size_diff) % CHUNK_SIZE;
+                final long size_diff = _stat.getSize() - file.length();
 
                 // Increase the size of the data object.
                 if (size_diff > 0)
@@ -655,6 +657,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                     log_.trace("truncate - Increasing the size of the data object by {} ...", size_diff);
 
                     byte[] chunk = new byte[CHUNK_SIZE];
+                    final long full_chunks = size_diff / CHUNK_SIZE;
+                    final long remaining_bytes = size_diff % CHUNK_SIZE;
 
                     // Open the data object in append mode.
                     try (IRODSFileOutputStream fos = ff.instanceIRODSFileOutputStream(file, OpenFlags.READ_WRITE))
@@ -663,7 +667,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                         {
                             fos.write(chunk);
                         }
-                        
+
                         if (remaining_bytes > 0)
                         {
                             fos.write(chunk, 0, (int) remaining_bytes);
@@ -678,6 +682,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                     IRODSFile tempFile = ff.instanceIRODSFile(path.toString() + newExt);
 
                     byte[] chunk = new byte[CHUNK_SIZE];
+                    final long full_chunks = _stat.getSize() / CHUNK_SIZE;
+                    final long remaining_bytes = _stat.getSize() % CHUNK_SIZE;
 
                     // @formatter:off
                     try (AutoClosedIRODSFile ac1 = new AutoClosedIRODSFile(tempFile);
@@ -697,7 +703,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                             fos.write(chunk, 0, (int) remaining_bytes);
                         }
                     }
-                    
+
                     // Rename data objects.
                     file.delete();
                     tempFile.renameTo(file);
@@ -721,15 +727,15 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         log_.debug("vfs::setattr");
         log_.debug("setattr - _inode = {}", getPath(toInodeNumber(_inode)));
         log_.debug("setattr - _stat  = {}", _stat);
-        
+
         if (_stat.isDefined(Stat.StatAttribute.MODE))
         {
-            setPermissions(_inode);
+            throw new UnsupportedOperationException("Adjusting the mode is not supported");
         }
 
         if (_stat.isDefined(Stat.StatAttribute.SIZE))
         {
-            truncate(_inode);
+            truncate(_inode, _stat);
         }
     }
 
@@ -737,9 +743,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     public Inode symlink(Inode _parent, String _linkName, String _targetName, Subject _subject, int _mode)
         throws IOException
     {
-        throw new UnsupportedOperationException("Not supported yet");
+        throw new UnsupportedOperationException("Not supported");
     }
-    
+
     @Override
     public WriteResult write(Inode _inode, byte[] _data, long _offset, int _count, StabilityLevel _stabilityLevel)
         throws IOException
@@ -756,7 +762,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             Path path = getPath(toInodeNumber(_inode));
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
             IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString());
-            
+
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
                 file.seek(_offset, FileIOOperations.SeekWhenceType.SEEK_START);
@@ -777,35 +783,41 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
 
     private Stat statPath(Path _path, long _inodeNumber) throws IOException
     {
-        log_.debug("statPath - _inodeNumber        = {}", _inodeNumber);
-        log_.debug("statPath - _path               = {}", _path);
-        
-        if (statObjectCache_.containsKey(_path))
-        {
-            log_.debug("statPath - Returning cached stat information ...", _path);
-            return statObjectCache_.get(_path);
-        }
+        log_.debug("statPath - _inodeNumber          = {}", _inodeNumber);
+        log_.debug("statPath - _path                 = {}", _path);
 
         IRODSAccount acct = getCurrentIRODSUser().getAccount();
 
+        // Cached stat information must be scoped to the user due to the permissions
+        // possibly being changed depending on who is accessing the NFS server.
+        final String cachedStatKey = acct.getUserName() + "_" + _path.toString();
+
+        if (statObjectCache_.containsKey(cachedStatKey))
+        {
+            log_.debug("statPath - Returning cached stat information ...", _path);
+            return statObjectCache_.get(cachedStatKey);
+        }
+
         try
         {
-            CollectionAndDataObjectListAndSearchAO lao = null;
-            lao = factory_.getCollectionAndDataObjectListAndSearchAO(acct);
+            CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(adminAcct_);
             ObjStat objStat = lao.retrieveObjectStatForPath(_path.toString());
 
-            log_.debug("statPath - iRODS stat info = {}", objStat);
+            log_.debug("statPath - iRODS stat info   = {}", objStat);
 
             Stat stat = new Stat();
 
             setTime(stat, objStat);
-            setStatMode(_path.toString(), stat, objStat.getObjectType(), acct);
 
-            log_.debug("statPath - Owner name      = {}", objStat.getOwnerName());
+            log_.debug("statPath - Secret owner name = {}", objStat.getOwnerName());
 
-            int ownerId = idMapper_.getUidForUser(objStat.getOwnerName());
-            int groupId = idMapper_.getGidForUser(objStat.getOwnerName());
-            
+            String ownerName = getOwnerName(_path.toString(), objStat.getObjectType(), acct.getUserName());
+
+            int ownerId = idMapper_.getUidForUser(ownerName);
+            int groupId = idMapper_.getGidForUser(ownerName);
+
+            setStatMode(_path.toString(), stat, objStat, ownerName, acct.getUserName());
+
             stat.setUid(ownerId);
             stat.setGid(groupId);
             stat.setNlink(1);
@@ -817,12 +829,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
             stat.setFileid((int) _inodeNumber);
             stat.setGeneration(objStat.getModifiedAt().getTime());
 
-            log_.debug("statPath - Owner ID        = {}", ownerId);
-            log_.debug("statPath - Group ID        = {}", groupId);
-            log_.debug("statPath - Permissions     = {}", Stat.modeToString(stat.getMode()));
-            log_.debug("statPath - Stat            = {}", stat);
-            
-            statObjectCache_.put(_path, stat);
+            log_.debug("statPath - Owner ID          = {}", ownerId);
+            log_.debug("statPath - Group ID          = {}", groupId);
+            log_.debug("statPath - Permissions       = {}", Stat.modeToString(stat.getMode()));
+            log_.debug("statPath - Stat              = {}", stat);
+
+            statObjectCache_.put(cachedStatKey, stat);
 
             return stat;
         }
@@ -883,50 +895,102 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         return Longs.fromByteArray(_inode.getFileId());
     }
 
-//    private static int getGroupIdFromMetaData(IRODSUser _user, String _path)
-//    {
-//        IRODSAccessObjectFactory aof = _user.getIRODSAccessObjectFactory();
-//        
-//        try
-//        {
-//            DataObjectAO dao = aof.getDataObjectAO(_user.getAccount());
-//            List<MetaDataAndDomainData> metadata = dao.findMetadataValuesForDataObject(_path);
-//
-//            if (!metadata.isEmpty())
-//            {
-//                for (MetaDataAndDomainData md : metadata)
-//                {
-//                    if ("filesystem::gid".equals(md.getAvuAttribute()))
-//                    {
-//                        return Integer.parseInt(md.getAvuValue());
-//                    }
-//                }
-//            }
-//        }
-//        catch (JargonException e)
-//        {
-//            log_.error(e.getMessage());
-//        }
-//        
-//        return -1;
-//    }
-
-    private void setStatMode(String _path, Stat _stat, ObjectType _objType, IRODSAccount _account)
-        throws JargonException
+    private String getOwnerName(String _path, ObjectType _objType, String _possibleOwner)
+        throws FileNotFoundException,
+        JargonException
     {
+        List<UserFilePermission> perms = null;
+
         switch (_objType)
         {
+            case COLLECTION_HEURISTIC_STANDIN:
             case COLLECTION:
-                CollectionAO coa = factory_.getCollectionAO(_account);
-                _stat.setMode(Stat.S_IFDIR | (0055 | calcMode(coa.listPermissionsForCollection(_path))));
+                CollectionAO coa = factory_.getCollectionAO(adminAcct_);
+                perms = coa.listPermissionsForCollection(_path);
                 break;
 
             case DATA_OBJECT:
-                DataObjectAO doa = factory_.getDataObjectAO(_account);
-                // ~0111 is needed to unset the execute bits. The parentheses aren't needed
-                // really, but they help to emphasize what bits we are interested in.
-                _stat.setMode(Stat.S_IFREG | (~0111 & calcMode(doa.listPermissionsForDataObject(_path))));
+                DataObjectAO doa = factory_.getDataObjectAO(adminAcct_);
+                perms = doa.listPermissionsForDataObject(_path);
                 break;
+
+            default:
+                break;
+        }
+
+        if (perms == null)
+        {
+            return IRODSIdMapper.NOBODY_USER;
+        }
+
+        // Filter to only owners.
+        // @formatter:off
+        perms = perms.stream()
+        	.filter(p -> p.getFilePermissionEnum() == FilePermissionEnum.OWN)
+        	.collect(Collectors.toList());
+        // @formatter:on
+
+        if (perms.isEmpty())
+        {
+            return IRODSIdMapper.NOBODY_USER;
+        }
+
+        // Return "_possibleOwner" if it is an owner, else return any of the other owners.
+        for (UserFilePermission p : perms)
+        {
+            // @formatter:off
+            if (p.getFilePermissionEnum() == FilePermissionEnum.OWN &&
+                p.getUserName().equals(_possibleOwner))
+            {
+                return _possibleOwner;
+            }
+            // @formatter:on
+        }
+
+        return perms.get(0).getUserName();
+    }
+
+    private boolean isSpecialCollection(String _path)
+    {
+        List<Path> paths = new ArrayList<>();
+
+        paths.add(ROOT_COLLECTION);
+        paths.add(ZONE_COLLECTION);
+        paths.add(HOME_COLLECTION);
+        paths.add(PUBLIC_COLLECTION);
+        paths.add(TRASH_COLLECTION);
+
+        return paths.stream().anyMatch(p -> p.toString().equals(_path));
+    }
+
+    private void setStatMode(String _path, Stat _stat, ObjStat _objStat, String _ownerName, String _userName)
+        throws JargonException
+    {
+        log_.debug("setStatMode - _path = {}", _path);
+
+        switch (_objStat.getObjectType())
+        {
+            case COLLECTION: {
+                if (isSpecialCollection(_path))
+                {
+                    _stat.setMode(Stat.S_IFDIR | 0755);
+                    return;
+                }
+
+                CollectionAO coa = factory_.getCollectionAO(adminAcct_);
+                List<UserFilePermission> perms = coa.listPermissionsForCollection(_path);
+                _stat.setMode(Stat.S_IFDIR | calcMode(_ownerName, _userName, _objStat.getObjectType(), perms));
+                break;
+            }
+
+            case DATA_OBJECT: {
+                DataObjectAO doa = factory_.getDataObjectAO(adminAcct_);
+                List<UserFilePermission> perms = doa.listPermissionsForDataObject(_path);
+                // @formatter:off
+                _stat.setMode(Stat.S_IFREG | (~0111 & calcMode(_ownerName, _userName, _objStat.getObjectType(), perms)));
+                // @formatter:on
+                break;
+            }
 
             // This object type comes from the Jargon library.
             // It is encountered when the user accessing iRODS is not a rodsadmin.
@@ -934,36 +998,85 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
                 _stat.setMode(Stat.S_IFDIR | 0755);
                 break;
 
-            case LOCAL_DIR:
-            case LOCAL_FILE:
-            case NO_INPUT:
-            case UNKNOWN:
-            case UNKNOWN_FILE:
             default:
                 break;
         }
     }
 
-    private static int calcMode(List<UserFilePermission> _perms)
+    private static int calcMode(String _ownerName,
+                                String _userName,
+                                ObjectType _objType,
+                                List<UserFilePermission> _perms)
     {
-        // Permissions are only set for the user.
-        // TODO Groups will need investigation.
-        final int r = 0400; // Read bit
-        final int w = 0200; // Write bit
-        final int x = 0100; // Execute bit
+        // Initial permissions for collections and data objects.
+        // Setting the execute bits allows users to navigate the tree
+        // assuming they know where they are going. Limiting it to
+        // execute means they cannot look around. This reflects the
+        // behavior in iRODS as much as possible.
+        int mode = 0101;
 
-        int mode = 0;
+        if (ObjectType.DATA_OBJECT == _objType)
+        {
+            mode = 0;
+        }
+
+        boolean ownerPermsSet = false;
+        boolean worldPermsSet = false;
 
         for (UserFilePermission perm : _perms)
         {
-            switch (perm.getFilePermissionEnum())
+            if (ownerPermsSet && worldPermsSet)
             {
-                // @formatter:off
-                case OWN:   mode |= (r | w | x); break;
-                case READ:  mode |= r; break;
-                case WRITE: mode |= w; break;
-                default:
-                // @formatter:on
+                break;
+            }
+
+            log_.debug("calcMode - permission = {}", perm);
+
+            // Owner permissions.
+            if (!ownerPermsSet && _ownerName.equals(perm.getUserName()))
+            {
+                ownerPermsSet = true;
+
+                final int r = 0400; // Read bit
+                final int w = 0200; // Write bit
+
+                switch (perm.getFilePermissionEnum())
+                {
+                    // @formatter:off
+                    case OWN:   mode |= (r | w); break;
+                    case WRITE: mode |= (r | w); break;
+                    case READ:  mode |= r; break;
+                    default:
+                    // @formatter:on
+                }
+
+                if (_ownerName.equals(_userName))
+                {
+                    break;
+                }
+            }
+            // World permissions.
+            else if (!worldPermsSet && _userName.equals(perm.getUserName()))
+            {
+                worldPermsSet = true;
+
+                final int r = 0004; // Read bit
+                final int w = 0002; // Write bit
+
+                switch (perm.getFilePermissionEnum())
+                {
+                    // @formatter:off
+                    case OWN:   mode |= (r | w); break;
+                    case WRITE: mode |= (r | w); break;
+                    case READ:  mode |= r; break;
+                    default:
+                    // @formatter:on
+                }
+
+                if (_ownerName.equals(_userName))
+                {
+                    break;
+                }
             }
         }
 
