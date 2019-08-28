@@ -6,7 +6,7 @@
         "file_information_refresh_time_in_milliseconds": 1000
     },
 
-    "irods_server": {
+    "irods_client": {
         "zone": "tempZone",
         "host": "<hostname>",
         "port": 1247,
