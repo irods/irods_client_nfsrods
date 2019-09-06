@@ -1,1 +1,1 @@
-/ *(rw,sec=sys,no_root_squash)
+/ *(rw,sec=sys,acl,no_root_squash)
