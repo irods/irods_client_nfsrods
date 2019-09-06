@@ -48,8 +48,8 @@ import org.irods.jargon.core.pub.io.IRODSFileOutputStream;
 import org.irods.jargon.core.pub.io.IRODSRandomAccessFile;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectType;
-import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.IRODSClientConfig;
+import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +61,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
     private static final Logger log_ = LoggerFactory.getLogger(IRODSVirtualFileSystem.class);
 
     private static final long FIXED_TIMESTAMP = System.currentTimeMillis();
-
     private static final FsStat FILE_SYSTEM_STAT_INFO = new FsStat(0, 0, 0, 0);
 
     private final IRODSAccessObjectFactory factory_;
@@ -117,7 +116,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem
         PUBLIC_COLLECTION = ZONE_COLLECTION.resolve("public");
         TRASH_COLLECTION = ZONE_COLLECTION.resolve("trash");
 
-        IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
+        IRODSProxyAdminAccountConfig proxyConfig = rodsSvrConfig.getIRODSProxyAdminAcctConfig();
         Path proxyUserHomeCollection = Paths.get("/", rodsSvrConfig.getZone(), "home", proxyConfig.getUsername());
         // @formatter:off
         adminAcct_ = IRODSAccount.instance(rodsSvrConfig.getHost(),

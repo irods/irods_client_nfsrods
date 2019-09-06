@@ -207,7 +207,7 @@ public class IRODSIdMapper implements NfsIdMapping
 
     private void initProxyAccount(ServerConfig _config)
     {
-        IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
+        IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSClientConfig().getIRODSProxyAdminAcctConfig();
         IRODSUser user = new IRODSUser(proxyConfig.getUsername(), 0, 0, config_, factory_);
 
         nameToUidMap_.put(proxyConfig.getUsername(), 0);

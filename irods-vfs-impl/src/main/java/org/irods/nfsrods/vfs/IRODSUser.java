@@ -4,8 +4,8 @@ import java.nio.file.Paths;
 
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
-import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.IRODSClientConfig;
+import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
@@ -22,8 +22,8 @@ public class IRODSUser
     public IRODSUser(String _username, int _uid, int _gid, ServerConfig _config, IRODSAccessObjectFactory _factory)
     {
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
-        IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
         IRODSClientConfig rodsSvrConfig = _config.getIRODSClientConfig();
+        IRODSProxyAdminAccountConfig proxyConfig = rodsSvrConfig.getIRODSProxyAdminAcctConfig();
 
         String adminAcct = proxyConfig.getUsername();
         String adminPw = proxyConfig.getPassword();
@@ -35,9 +35,12 @@ public class IRODSUser
 
         userID_ = _uid;
         groupID_ = _gid;
+
+        // @formatter:off
         proxiedAcct_ = IRODSAccount.instanceWithProxy(rodsSvrConfig.getHost(), rodsSvrConfig.getPort(), _username,
                                                       adminPw, rootPath, zone, rodsSvrConfig.getDefaultResource(),
                                                       adminAcct, zone);
+        // @formatter:on
     }
 
     public int getUserID()
