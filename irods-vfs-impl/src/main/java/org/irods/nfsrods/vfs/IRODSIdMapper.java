@@ -218,7 +218,7 @@ public class IRODSIdMapper implements NfsIdMapping
     {
         NFSServerConfig nfsConfig = _config.getNfsServerConfig();
         PurgeUsersRunnable runnable = new PurgeUsersRunnable(config_, nameToUidMap_, uidToNameMap_, purgeUsersLock_);
-        scheduler_.scheduleAtFixedRate(runnable, 0, nfsConfig.getUserInfoRefreshTimeInMinutes(), TimeUnit.MINUTES);
+        scheduler_.scheduleAtFixedRate(runnable, 0, nfsConfig.getUserInfoRefreshTimeInMilliseconds(), TimeUnit.MILLISECONDS);
     }
 
     private static final class AutoClosedLock implements AutoCloseable
