@@ -94,7 +94,7 @@ public class IRODSIdMapper implements NfsIdMapping
         return String.valueOf(_id);
     }
 
-    public int getUidForUser(String _name)
+    public int getUidByUserName(String _name)
     {
         if (_name == null || _name.isEmpty())
         {
@@ -159,6 +159,42 @@ public class IRODSIdMapper implements NfsIdMapping
         log_.debug("getGidForUser - User found! Returning group name {}", p.gid);
 
         return p.gid;
+    }
+
+    public int getGidByGroupName(String _name)
+    {
+        if (_name == null || _name.isEmpty())
+        {
+            log_.error("getGidForGroup - Name argument is null. Returning gid {}", NOBODY_GID);
+            return NOBODY_GID;
+        }
+
+        __group g = libc_.getgrnam(_name);
+
+        if (g == null)
+        {
+            log_.debug("getGidForGroup - Group not found. Returning group name {}", NOBODY_GID);
+            return NOBODY_GID;
+        }
+
+        log_.debug("getGidForGroup - Group found! Returning group name {}", g.gid);
+
+        return g.gid;
+    }
+    
+    public String getGroupName(int _gid)
+    {
+        log_.debug("getGroupName - _gid = {}", _gid);
+        
+        __group g = libc_.getgrgid(_gid);
+        
+        if (g == null)
+        {
+            log_.debug("getGroupName - Group not found. Returning null");
+            return null;
+        }
+
+        return g.name;
     }
 
     public IRODSUser resolveUser(int _uid) throws IOException
