@@ -8,10 +8,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class IRODSClientConfig
 {
     // @formatter:off
-    @JsonProperty("host")             private String host_;
-    @JsonProperty("port")             private int port_;
-    @JsonProperty("zone")             private String zone_;
-    @JsonProperty("default_resource") private String defResc_;
+    @JsonProperty("host")                private String host_;
+    @JsonProperty("port")                private int port_;
+    @JsonProperty("zone")                private String zone_;
+    @JsonProperty("default_resource")    private String defResc_;
+    @JsonProperty("proxy_admin_account") private IRODSProxyAdminAccountConfig iRODSProxyAdminAcctConfig_;
     
     IRODSClientConfig() {}
     // @formatter:on
@@ -38,5 +39,11 @@ public class IRODSClientConfig
     public String getDefaultResource()
     {
         return defResc_;
+    }
+
+    @JsonIgnore
+    public IRODSProxyAdminAccountConfig getIRODSProxyAdminAcctConfig()
+    {
+        return iRODSProxyAdminAcctConfig_;
     }
 }

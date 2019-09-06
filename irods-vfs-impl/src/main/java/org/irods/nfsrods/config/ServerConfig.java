@@ -8,9 +8,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class ServerConfig
 {
     // @formatter:off
-    @JsonProperty("nfs_server")                private NFSServerConfig nfsServerConfig_;
-    @JsonProperty("irods_client")              private IRODSClientConfig iRODSClientConfig_;
-    @JsonProperty("irods_proxy_admin_account") private IRODSProxyAdminAccountConfig iRODSProxyAdminAcctConfig_;
+    @JsonProperty("nfs_server")   private NFSServerConfig nfsServerConfig_;
+    @JsonProperty("irods_client") private IRODSClientConfig iRODSClientConfig_;
     
     ServerConfig() {}
     // @formatter:on
@@ -25,11 +24,5 @@ public class ServerConfig
     public IRODSClientConfig getIRODSClientConfig()
     {
         return iRODSClientConfig_;
-    }
-
-    @JsonIgnore
-    public IRODSProxyAdminAccountConfig getIRODSProxyAdminAcctConfig()
-    {
-        return iRODSProxyAdminAcctConfig_;
     }
 }

@@ -11,11 +11,10 @@
         "zone": "tempZone",
         "host": "<hostname>",
         "port": 1247,
-        "default_resource": "demoResc"
-    },
-
-    "irods_proxy_admin_account": {
-        "username": "<username>",
-        "password": "<password>"
+        "default_resource": "demoResc",
+        "proxy_admin_account": {
+            "username": "<username>",
+            "password": "<password>"
+        }
     }
 }

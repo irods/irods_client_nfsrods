@@ -15,8 +15,8 @@ import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.io.IRODSFile;
-import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.IRODSClientConfig;
+import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
@@ -39,8 +39,8 @@ class InodeToPathMapper
         fileID_ = new AtomicLong(1); // Inode numbers start at 1
         
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
-        IRODSProxyAdminAccountConfig proxyConfig = _config.getIRODSProxyAdminAcctConfig();
         IRODSClientConfig rodsSvrConfig = _config.getIRODSClientConfig();
+        IRODSProxyAdminAccountConfig proxyConfig = rodsSvrConfig.getIRODSProxyAdminAcctConfig();
 
         String adminAcct = proxyConfig.getUsername();
         String adminPw = proxyConfig.getPassword();
