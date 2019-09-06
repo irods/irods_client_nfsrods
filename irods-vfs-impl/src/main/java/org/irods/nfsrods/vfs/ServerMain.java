@@ -7,7 +7,7 @@ import javax.cache.CacheManager;
 import javax.cache.Caching;
 import javax.cache.spi.CachingProvider;
 
-import org.apache.log4j.PropertyConfigurator;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.dcache.nfs.ExportFile;
 import org.dcache.nfs.v3.MountServer;
 import org.dcache.nfs.v3.NfsServerV3;
@@ -34,10 +34,10 @@ public class ServerMain
     private static final String SERVER_CONFIG_PATH  = NFSRODS_CONFIG_HOME + "/server.json";
     private static final String EXPORTS_CONFIG_PATH = NFSRODS_CONFIG_HOME + "/exports";
     // @formatter:on
-
+    
     static
     {
-        PropertyConfigurator.configure(LOGGER_CONFIG_PATH);
+        Configurator.initialize(null, LOGGER_CONFIG_PATH);
     }
 
     private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
