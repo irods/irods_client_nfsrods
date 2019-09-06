@@ -9,8 +9,6 @@ import javax.cache.spi.CachingProvider;
 
 import org.apache.logging.log4j.core.config.Configurator;
 import org.dcache.nfs.ExportFile;
-import org.dcache.nfs.v3.MountServer;
-import org.dcache.nfs.v3.NfsServerV3;
 import org.dcache.nfs.v4.MDSOperationFactory;
 import org.dcache.nfs.v4.NFSServerV41;
 import org.dcache.nfs.vfs.VirtualFileSystem;
@@ -92,12 +90,7 @@ public class ServerMain
                 .build();
             // @formatter:on
 
-            NfsServerV3 nfs3 = new NfsServerV3(exportFile, vfs);
-            MountServer mountd = new MountServer(exportFile, vfs);
-
             nfsSvc.register(new OncRpcProgram(100003, 4), nfs4);
-            nfsSvc.register(new OncRpcProgram(100003, 3), nfs3);
-            nfsSvc.register(new OncRpcProgram(100003, 3), mountd);
 
             nfsSvc.start();
 
