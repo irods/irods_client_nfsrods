@@ -1,5 +1,5 @@
 # NFSRODS
-An [nfs4j](https://github.com/dCache/nfs4j) Virtual File System implementation supporting the iRODS Data Grid.
+A standalone NFSv4.1 server (via [nfs4j](https://github.com/dCache/nfs4j)) with a Virtual File System implementation supporting the [iRODS Data Management Platform](https://irods.org).
 
 ![NFSRODS network diagram](nfsrods_diagram.png)
 
@@ -162,11 +162,11 @@ When using `nfs4_setfacl`, it's important to remember the following:
 
 Below is the permissions translation table used by NFSRODS when `nfs4_setfacl` is invoked. The list is in descending order of iRODS permissions.
 
-| NFSv4 ACE Perm. Bit | NFSv4 ACE Perm. Bit Name | iRODS Perm. |
+| NFSv4 ACE <br/> Permission Bit | NFSv4 ACE <br/> Permission Bit Name | iRODS <br/> Permission |
 |:-------------------:|:------------------------:|:-----------:|
 | o                   | ACE4_WRITE_OWNER         | own         |
-| w                   | ACE4_WRITE_DATA          | write       |
 | a                   | ACE4_APPEND_DATA         | write       |
+| w                   | ACE4_WRITE_DATA          | write       |
 | r                   | ACE4_READ_DATA           | read        |
 
 #### Example
@@ -179,7 +179,7 @@ NFSRODS will see that the **ACE4_READ_DATA** and **ACE4_WRITE_OWNER** bits are s
 ### Using nfs4_getfacl
 Using this command is much simpler. When invoked, it returns the list of iRODS permissions on an object as an ACL. The mapping used for translation is shown below.
 
-| iRODS Perm. | NFSv4 ACE Perm. Bits |
+| iRODS <br /> Permission | NFSv4 ACE <br/> Permission Bits |
 |:-----------:|:--------------------:|
 | own         | rwado                |
 | write       | rwa                  |
