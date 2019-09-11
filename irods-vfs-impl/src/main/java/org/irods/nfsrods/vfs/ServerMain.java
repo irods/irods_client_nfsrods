@@ -15,6 +15,10 @@ import org.dcache.nfs.vfs.VirtualFileSystem;
 import org.dcache.oncrpc4j.rpc.OncRpcProgram;
 import org.dcache.oncrpc4j.rpc.OncRpcSvc;
 import org.dcache.oncrpc4j.rpc.OncRpcSvcBuilder;
+import org.irods.jargon.core.connection.ClientServerNegotiationPolicy;
+import org.irods.jargon.core.connection.ClientServerNegotiationPolicy.SslNegotiationPolicy;
+import org.irods.jargon.core.connection.IRODSSession;
+import org.irods.jargon.core.connection.SettableJargonProperties;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
@@ -32,14 +36,14 @@ public class ServerMain
     private static final String SERVER_CONFIG_PATH  = NFSRODS_CONFIG_HOME + "/server.json";
     private static final String EXPORTS_CONFIG_PATH = NFSRODS_CONFIG_HOME + "/exports";
     // @formatter:on
-    
+
     static
     {
         Configurator.initialize(null, LOGGER_CONFIG_PATH);
     }
 
     private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
-    
+
     public static void main(String[] args) throws JargonException
     {
         ServerConfig config = null;
@@ -58,7 +62,9 @@ public class ServerMain
         NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
         IRODSFileSystem ifsys = IRODSFileSystem.instance();
         OncRpcSvc nfsSvc = null;
-        
+
+        configureSslNegotiationPolicy(config, ifsys);
+
         Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<>(ifsys, "Closing iRODS connections")));
 
         try (CachingProvider cachingProvider = Caching.getCachingProvider();
@@ -102,6 +108,18 @@ public class ServerMain
         {
             log_.error(e.getMessage());
         }
+    }
+
+    private static void configureSslNegotiationPolicy(ServerConfig _config, IRODSFileSystem _ifsys) throws JargonException
+    {
+        String policy = _config.getIRODSClientConfig().getSslNegotiationPolicy();
+        SslNegotiationPolicy sslNegPolicy = ClientServerNegotiationPolicy.findSslNegotiationPolicyFromString(policy);
+        log_.debug("configureClientServerNegotiationPolicy - Policy = {}", sslNegPolicy);
+
+        IRODSSession session = _ifsys.getIrodsSession();
+        SettableJargonProperties props = new SettableJargonProperties(session.getJargonProperties());
+        props.setNegotiationPolicy(sslNegPolicy);
+        session.setJargonProperties(props);
     }
 
     private static void close(Object _obj)

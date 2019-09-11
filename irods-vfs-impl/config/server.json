@@ -12,6 +12,7 @@
         "host": "<hostname>",
         "port": 1247,
         "default_resource": "demoResc",
+        "ssl_negotiation_policy": "CS_NEG_REFUSE",
         "proxy_admin_account": {
             "username": "<username>",
             "password": "<password>"
