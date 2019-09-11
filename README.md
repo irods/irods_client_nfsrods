@@ -15,6 +15,7 @@ A standalone NFSv4.1 server (via [nfs4j](https://github.com/dCache/nfs4j)) with 
   + [Using **nfs4_setfacl**](#using-nfs4_setfacl)
   + [Using **nfs4_getfacl**](#using-nfs4_getfacl)
 - [TODOs](#todos)
+- [Troubleshooting](#troubleshooting)
 
 ## Features
 - Configurable
@@ -61,7 +62,7 @@ NFSRODS uses Log4j 2 for managing and writing log files. The default config will
 You'll need to set each option to match your iRODS environment. Each option is explained below.
 ```javascript
 {
-    // This section defines options needed by the NFS server.
+    // This section defines options for the NFSRODS NFS server.
     "nfs_server": {
         // The port number within the container to listen for NFS requests.
         "port": 2049,
@@ -83,20 +84,29 @@ You'll need to set each option to match your iRODS environment. Each option is e
     },
 
     // This section defines the location of the iRODS server being presented
-    // by NFSRODS. The NFSRODS server can only be configured to present a single zone.
+    // by NFSRODS. The NFSRODS server can only be configured to present a single iRODS zone.
     "irods_client": {
         "host": "hostname",
         "port": 1247,
         "zone": "tempZone",
         
-        // Because NFS does not have any notion of iRODS, you must define the
-        // target resource for new data objects.
+        // Defines the target resource for new data objects.
         "default_resource": "demoResc",
+
+        // Enables/disables SSL/TLS between NFSRODS and the iRODS server.
+        //
+        // The following options are available:
+        // - CS_NEG_REQUIRE: Only use SSL/TLS.
+        // - CS_NEG_DONT_CARE: Use SSL/TLS if the iRODS server is not set to CS_NEG_REFUSE.
+        // - CS_NEG_REFUSE: Do NOT use SSL/TLS.
+        //
+        // NOTE: NFSRODS does not yet support SSL/TLS.
+        "ssl_negotiation_policy": "CS_NEG_REFUSE",
 
         // An administrative iRODS account is required to carry out each request.
         // The account specified here is used as a proxy to connect to the iRODS
-        // server. iRODS will still apply policies based on the client's account,
-        // not the proxy account.
+        // server for some administrative actions. iRODS will still apply policies
+        // based on the requesting user's account, not the proxy admin account.
         "proxy_admin_account": {
             "username": "rods",
             "password": "rods"
@@ -193,3 +203,16 @@ Using this command is much simpler. When invoked, it returns the list of iRODS p
 - Implement support for SSL connections to iRODS
 - Implement support for Parallel File Transfers
 - Provide POSIX Test Suite coverage
+
+## Troubleshooting
+### Q. The NFSRODS docker container won't start. Why?
+It is likely that your `server.json` configuration is incorrect. To verify this, try running the container using `-it` instead of `-d` like so:
+```bash
+$ docker run -it --name nfsrods \
+             -p <public_port>:2049 \
+             -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
+             -v </full/path/to/etc/passwd/formatted/file>:/etc/passwd:ro \
+             -v </full/path/to/etc/shadow/formatted/file>:/etc/shadow:ro \
+             nfsrods
+```
+This command will cause the log messages to appear in your terminal. If there are any errors during start-up, they will appear in the output. Missing configuration options will have a prefix of **Missing server configuration option**.
