@@ -1211,8 +1211,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             log_.debug("statPath - Secret owner name = {}", objStat.getOwnerName());
 
-            String userName = IRODSIdMapper.NOBODY_USER;
-            String groupName = IRODSIdMapper.NOBODY_GROUP;
+            String userName = IRODSIdMapper.getNobodyUserName();
+            String groupName = IRODSIdMapper.getNobodyGroupName();
             
             if (getHighestUserPermissionForPath(path, acct.getUserName()).isPresent())
             {
@@ -1220,7 +1220,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             }
 
             int userId = idMapper_.getUidByUserName(userName);
-            int groupId = IRODSIdMapper.NOBODY_GID;
+            int groupId = IRODSIdMapper.getNobodyGid();
 
             setStatMode(path, stat, objStat, userName, acct.getUserName(), groupName);
 
