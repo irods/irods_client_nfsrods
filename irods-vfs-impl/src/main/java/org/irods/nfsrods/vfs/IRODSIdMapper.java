@@ -36,11 +36,40 @@ public class IRODSIdMapper implements NfsIdMapping
 
     private static final LibC libc_ = (LibC) Native.load("c", LibC.class);
 
-    public static final int NOBODY_UID = 65534;
-    public static final int NOBODY_GID = 65534;
+    private static final int NOBODY_UID = 65534;
+    private static final int NOBODY_GID = 65534;
 
-    public static final String NOBODY_USER  = libc_.getpwuid(NOBODY_UID).name;
-    public static final String NOBODY_GROUP = libc_.getgrgid(NOBODY_GID).name;
+    private static final String NOBODY_USER;
+    private static final String NOBODY_GROUP;
+    
+    static
+    {
+        String user = "nfsrods_nobody";
+
+        try
+        {
+            user = libc_.getpwuid(NOBODY_UID).name;
+        }
+        catch (Exception e)
+        {
+            log_.error("constructor - No user id mapped to {}. Defaulting to \"{}\".", NOBODY_UID, user);
+        }
+        
+        NOBODY_USER = user;
+
+        String group = "nfsrods_nogroup";
+
+        try
+        {
+            group = libc_.getgrgid(NOBODY_GID).name;
+        }
+        catch (Exception e)
+        {
+            log_.error("constructor - No group id mapped to {}. Defaulting to \"{}\".", NOBODY_GID, group);
+        }
+        
+        NOBODY_GROUP = group;
+    }
 
     private ServerConfig config_;
     private IRODSAccessObjectFactory factory_;
@@ -60,6 +89,26 @@ public class IRODSIdMapper implements NfsIdMapping
 
         initProxyAccount(_config);
         initSchedulerForPurgingUsers(_config);
+    }
+    
+    public static int getNobodyUid()
+    {
+        return NOBODY_UID;
+    }
+    
+    public static String getNobodyUserName()
+    {
+        return NOBODY_USER;
+    }
+
+    public static int getNobodyGid()
+    {
+        return NOBODY_GID;
+    }
+    
+    public static String getNobodyGroupName()
+    {
+        return NOBODY_GROUP;
     }
 
     @Override
