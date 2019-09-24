@@ -798,7 +798,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
             CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(acct);
             Path parentPath = getPath(toInodeNumber(_inode));
-
+            
             log_.debug("list - Listing contents of [{}] ...", parentPath);
 
             String irodsAbsPath = parentPath.normalize().toString();
@@ -806,26 +806,37 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             List<CollectionAndDataObjectListingEntry> entries;
             entries = lao.listDataObjectsAndCollectionsUnderPath(irodsAbsPath);
 
-            for (CollectionAndDataObjectListingEntry dataObj : entries)
+            for (CollectionAndDataObjectListingEntry e : entries)
             {
-                Path filePath = parentPath.resolve(dataObj.getPathOrName());
-                log_.debug("list - Entry = {}", filePath);
+                Path path = parentPath.resolve(e.getPathOrName());
+
+                try
+                {
+                    lao.retrieveObjectStatForPath(path.toString());
+                }
+                catch (JargonException ex)
+                {
+                    log_.debug("list - [{}] does not have permission to stat [{}]. Skipping ...", acct.getUserName(), path);
+                    continue;
+                }
+
+                log_.debug("list - Entry = {}", path);
 
                 long inodeNumber;
 
-                if (inodeToPathMapper_.getInodeToPathMap().containsValue(filePath))
+                if (inodeToPathMapper_.getInodeToPathMap().containsValue(path))
                 {
-                    inodeNumber = getInodeNumber(filePath);
+                    inodeNumber = getInodeNumber(path);
                 }
                 else
                 {
                     inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
-                    inodeToPathMapper_.map(inodeNumber, filePath);
+                    inodeToPathMapper_.map(inodeNumber, path);
                 }
 
-                Stat stat = statPath(filePath, inodeNumber);
+                Stat stat = statPath(path, inodeNumber);
                 Inode inode = toFh(inodeNumber);
-                list.add(new DirectoryEntry(filePath.getFileName().toString(), inode, stat, inodeNumber));
+                list.add(new DirectoryEntry(path.getFileName().toString(), inode, stat, inodeNumber));
             }
         }
         catch (JargonException e)
