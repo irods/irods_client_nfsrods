@@ -90,6 +90,7 @@ import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
 
 public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
@@ -103,6 +104,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     private final IRODSIdMapper idMapper_;
     private final InodeToPathMapper inodeToPathMapper_;
     private final IRODSAccount adminAcct_;
+    private final PrivilegedSetAclNames privilegedSetAclNames_;
 
     private final MutableConfiguration<String, Stat> statObjectCacheConfig_; // Key: <username>_<path>
     private final Cache<String, Stat> statObjectCache_;                      // Key: <username>_<path>
@@ -112,7 +114,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
     private final MutableConfiguration<String, ObjectType> objectTypeCacheConfig_; // Key: <path>
     private final Cache<String, ObjectType> objectTypeCache_;                      // Key: <path>
-
+    
     // Special paths within iRODS.
     private final Path ROOT_COLLECTION;
     private final Path ZONE_COLLECTION;
@@ -170,6 +172,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                                            rodsSvrConfig.getZone(),
                                            rodsSvrConfig.getDefaultResource());
         // @formatter:on
+
+        privilegedSetAclNames_ = new PrivilegedSetAclNames(factory_, adminAcct_);
 
         int time = _config.getNfsServerConfig().getFileInfoRefreshTimeInMilliseconds();
 
@@ -537,7 +541,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
         log_.debug("setAcl - _inode path = {}", path);
         log_.debug("setAcl - _acl length = {}", _acl.length);
-
+        
         try
         {
             AclDiff diff = diffAcl(path, _acl);
@@ -656,7 +660,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         log_.debug("checkAcl - _accessMask & ACE4_WRITE_OWNER       = {}", _accessMask & ACE4_WRITE_OWNER);
         log_.debug("checkAcl - _accessMask & ACE4_SYNCHRONIZE       = {}", _accessMask & ACE4_SYNCHRONIZE);
         // @formatter:on
-
+        
         try
         {
             {
@@ -671,11 +675,50 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             }
 
             // Collections are always executable, so allow access.
-            if (getObjectType(path) == ObjectType.COLLECTION && (_accessMask & ACE4_GENERIC_EXECUTE) != 0)
+            if ((_accessMask & ACE4_GENERIC_EXECUTE) != 0 && getObjectType(path) == ObjectType.COLLECTION)
             {
                 log_.debug("checkAcl - Object is a collection, access allowed.");
                 accessCache_.put(cachedAccessKey, Access.ALLOW);
                 return Access.ALLOW;
+            }
+
+            if ((_accessMask & (ACE4_READ_ACL | ACE4_WRITE_ACL | ACE4_READ_ATTRIBUTES | ACE4_WRITE_ATTRIBUTES)) != 0)
+            {
+                if (privilegedSetAclNames_.contains(userName))
+                {
+                    String prefix = privilegedSetAclNames_.getPathPrefix(userName);
+                    
+                    log_.debug("checkAcl - User path prefix = {}", prefix);
+                    
+                    if (Paths.get(path).startsWith(prefix))
+                    {
+                        log_.debug("checkAcl - User [{}] has special privileges to modify ACLs, access allowed.", userName);
+                        accessCache_.put(cachedAccessKey, Access.ALLOW);
+                        return Access.ALLOW;
+                    }
+                }
+
+                UserGroupAO ugao = factory_.getUserGroupAO(adminAcct_);
+                List<UserGroup> groupsContainingUser = ugao.findUserGroupsForUser(userName);
+
+                for (UserGroup ug : groupsContainingUser)
+                {
+                    String groupName = ug.getUserGroupName();
+
+                    if (privilegedSetAclNames_.contains(groupName))
+                    {
+                        String prefix = privilegedSetAclNames_.getPathPrefix(groupName);
+                        
+                        log_.debug("checkAcl - Group path prefix = {}", prefix);
+                        
+                        if (Paths.get(path).startsWith(prefix))
+                        {
+                            log_.debug("checkAcl - Group [{}] has special privileges to modify ACLs, access allowed.", groupName);
+                            accessCache_.put(cachedAccessKey, Access.ALLOW);
+                            return Access.ALLOW;
+                        }
+                    }
+                }
             }
 
             Optional<UserFilePermission> perm = getHighestUserPermissionForPath(path, userName);
@@ -1412,10 +1455,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             .max((lhs, rhs) -> Integer.compare(lhs.getFilePermissionEnum().ordinal(),
                                                rhs.getFilePermissionEnum().ordinal()));
         
+        List<UserTypeEnum> userTypes = Lists.newArrayList(UserTypeEnum.RODS_ADMIN, UserTypeEnum.RODS_USER, UserTypeEnum.GROUP_ADMIN);
+
         // Get the permissions for the user if they have explicit permission
         // to the object.
         List<UserFilePermission> perms = _perms.parallelStream()
-            .filter(p -> p.getUserType() == UserTypeEnum.RODS_ADMIN || p.getUserType() == UserTypeEnum.RODS_USER)
+            .filter(p -> userTypes.contains(p.getUserType()))
             .filter(p -> p.getUserName().equals(_userName))
             .collect(Collectors.toList());
         
