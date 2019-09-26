@@ -46,6 +46,7 @@ import javax.security.auth.Subject;
 
 import org.dcache.auth.Subjects;
 import org.dcache.nfs.ChimeraNFSException;
+import org.dcache.nfs.status.AccessException;
 import org.dcache.nfs.status.NoEntException;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.nfs.v4.xdr.aceflag4;
@@ -126,29 +127,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                                   IRODSAccessObjectFactory _factory,
                                   IRODSIdMapper _idMapper,
                                   CacheManager _cacheManager)
-        throws DataNotFoundException,
-        JargonException
+        throws DataNotFoundException, JargonException
     {
-        if (_factory == null)
-        {
-            throw new IllegalArgumentException("Null IRODSAccessObjectFactory");
-        }
-
-        if (_config == null)
-        {
-            throw new IllegalArgumentException("Null ServerConfig");
-        }
-
-        if (_idMapper == null)
-        {
-            throw new IllegalArgumentException("Null IRODSIdMap");
-        }
-
-        if (_cacheManager == null)
-        {
-            throw new IllegalArgumentException("Null CacheManager");
-        }
-
         factory_ = _factory;
         idMapper_ = _idMapper;
         inodeToPathMapper_ = new InodeToPathMapper(_config, _factory);
@@ -663,17 +643,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         
         try
         {
-            {
-                UserAO uao = factory_.getUserAO(adminAcct_);
-
-                if (uao.findByName(userName).getUserType() == UserTypeEnum.RODS_ADMIN)
-                {
-                    log_.debug("checkAcl - User is an iRODS administrator, access allowed.");
-                    accessCache_.put(cachedAccessKey, Access.ALLOW);
-                    return Access.ALLOW;
-                }
-            }
-
             // Collections are always executable, so allow access.
             if ((_accessMask & ACE4_GENERIC_EXECUTE) != 0 && getObjectType(path) == ObjectType.COLLECTION)
             {
@@ -684,6 +653,18 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             if ((_accessMask & (ACE4_READ_ACL | ACE4_WRITE_ACL | ACE4_READ_ATTRIBUTES | ACE4_WRITE_ATTRIBUTES)) != 0)
             {
+                // TODO Add comments.
+                {
+                    UserAO uao = factory_.getUserAO(adminAcct_);
+
+                    if (uao.findByName(userName).getUserType() == UserTypeEnum.RODS_ADMIN)
+                    {
+                        log_.debug("checkAcl - User is an iRODS administrator, access allowed.");
+                        accessCache_.put(cachedAccessKey, Access.ALLOW);
+                        return Access.ALLOW;
+                    }
+                }
+
                 if (privilegedSetAclNames_.contains(userName))
                 {
                     String prefix = privilegedSetAclNames_.getPathPrefix(userName);
@@ -1079,14 +1060,20 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         log_.debug("read - _offset      = {}", _offset);
         log_.debug("read - _count       = {}", _count);
 
-        IRODSAccount acct = getCurrentIRODSUser().getAccount();
-
         try
         {
+            IRODSAccount acct = getCurrentIRODSUser().getAccount();
             Path path = getPath(toInodeNumber(_inode));
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
-            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString());
+            IRODSFile f = ff.instanceIRODSFile(path.toString());
+            
+            if (!f.canRead())
+            {
+                throw new AccessException("[" + acct.getUserName() + "] does not have permission to read from [" + path + "]");
+            }
 
+            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(f);
+            
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
                 file.seek(_offset, FileIOOperations.SeekWhenceType.SEEK_START);
@@ -1195,7 +1182,14 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
-            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString());
+            IRODSFile f = ff.instanceIRODSFile(path.toString());
+            
+            if (!f.canWrite())
+            {
+                throw new AccessException("[" + acct.getUserName() + "] does not have permission to write to [" + path + "]");
+            }
+
+            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(f);
 
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
