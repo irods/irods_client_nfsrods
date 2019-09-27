@@ -159,6 +159,8 @@ Depending on your environment and deployment of NFSRODS, you may want to conside
 ## Unix Permissions and NFSv4 ACLs
 In iRODS, multiple users and groups can be given different permissions on a collection or data object. Unix does not provide this capability and therefore, iRODS permissions cannot be mapped into Unix permissions without losing information. To get around this, NFSRODS uses NFSv4 ACLs.
 
+![NFSRODS ACLs](nfsrods_acls.png)
+
 NFSv4 ACLs provide more than enough control for reflecting iRODS permissions in Unix. To manage permissions through NFSRODS, you'll need to install the package that contains `nfs4_getfacl` and `nfs4_setfacl`. On Ubuntu 16.04, that package would be `nfs4-acl-tools`. With these commands, you can view and modify all permissions in iRODS.
 
 **IMPORTANT:** The order of ACEs within an ACL does not matter in NFSRODS. When NFSRODS has to decide whether a user is allowed to execute an operation, it takes the highest level of permission for that user (including groups the user is a member of).
