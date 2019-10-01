@@ -158,6 +158,24 @@ If you want to connect NFSRODS to an iRODS Zone that is using SSL, a certificate
 
 The container will load any cert it finds at `/nfsrods_ssl.crt` within the container into the OpenJDK keystore.
 
+#### sssd integration
+
+As an alternative to an `/etc/passwd` file, the default NFSRODS container also
+supports `libnss-sss`. It can be used by configuring sssd on the container
+host and binding the sssd socket into the container.
+
+```bash
+$ docker run -d --name nfsrods \
+             -p <public_port>:2049 \
+             -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
+             -v /var/lib/sss:/var/lib/sss \
+             nfsrods
+```
+
+Using sssd, NFSRODS can use any sssd domain for ID mapping, including AD or
+LDAP. If sssd and `/etc/passwd` are used together, passwd will be consulted
+first.
+
 ### Mounting
 ```bash
 $ sudo mkdir <mount_point>
