@@ -66,6 +66,7 @@ import org.dcache.nfs.vfs.VirtualFileSystem;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.packinstr.DataObjInp.OpenFlags;
 import org.irods.jargon.core.protovalues.FilePermissionEnum;
 import org.irods.jargon.core.protovalues.UserTypeEnum;
 import org.irods.jargon.core.pub.CollectionAO;
@@ -701,6 +702,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                     }
                 }
             }
+            else
+            {
+                log_.debug("checkAcl - Attribute/ACL operation not requested");
+            }
 
             Optional<UserFilePermission> perm = getHighestUserPermissionForPath(path, userName);
             
@@ -751,6 +756,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             closeCurrentConnection();
         }
 
+        log_.debug("checkAcl - Access denied.");
         accessCache_.put(cachedAccessKey, Access.DENY);
 
         return Access.DENY;
@@ -1065,14 +1071,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
             Path path = getPath(toInodeNumber(_inode));
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
-            IRODSFile f = ff.instanceIRODSFile(path.toString());
             
-            if (!f.canRead())
+            if (!ff.instanceIRODSFile(path.toString()).canRead())
             {
                 throw new AccessException("[" + acct.getUserName() + "] does not have permission to read from [" + path + "]");
             }
 
-            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(f);
+            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString(), OpenFlags.READ);
             
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
@@ -1182,14 +1187,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
-            IRODSFile f = ff.instanceIRODSFile(path.toString());
-            
-            if (!f.canWrite())
+
+            if (!ff.instanceIRODSFile(path.toString()).canWrite())
             {
                 throw new AccessException("[" + acct.getUserName() + "] does not have permission to write to [" + path + "]");
             }
 
-            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(f);
+            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString(), OpenFlags.READ_WRITE);
 
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
