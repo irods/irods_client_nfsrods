@@ -106,7 +106,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     private final IRODSIdMapper idMapper_;
     private final InodeToPathMapper inodeToPathMapper_;
     private final IRODSAccount adminAcct_;
-    private final PrivilegedSetAclNames privilegedSetAclNames_;
+    private final ReadWriteAclWhitelist readWriteAclWhitelist_;
 
     private final MutableConfiguration<String, Stat> statObjectCacheConfig_; // Key: <username>_<path>
     private final Cache<String, Stat> statObjectCache_;                      // Key: <username>_<path>
@@ -154,7 +154,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                                            rodsSvrConfig.getDefaultResource());
         // @formatter:on
 
-        privilegedSetAclNames_ = new PrivilegedSetAclNames(factory_, adminAcct_);
+        readWriteAclWhitelist_ = new ReadWriteAclWhitelist(factory_, adminAcct_);
 
         int time = _config.getNfsServerConfig().getFileInfoRefreshTimeInMilliseconds();
 
@@ -575,6 +575,53 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             closeCurrentConnection();
         }
     }
+    
+    private boolean isAllowedToReadWriteAclForPath(String _userName, String _path) throws JargonException
+    {
+        if (readWriteAclWhitelist_.contains(_userName))
+        {
+            String prefix = readWriteAclWhitelist_.getPathPrefix(_userName);
+
+            log_.debug("isAllowedToReadWriteAclForPath - User path prefix = {}", prefix);
+
+            if (Paths.get(_path).startsWith(prefix))
+            {
+                log_.debug("isAllowedToReadWriteAclForPath - User [{}] has special " +
+                           "privileges to read/write ACLs, access allowed.", _userName);
+                return true;
+            }
+        }
+
+        log_.debug("isAllowedToReadWriteAclForPath - User [{}] does not have special " +
+                   "privileges to read/write ACLs. Checking groups ...", _userName);
+
+        UserGroupAO ugao = factory_.getUserGroupAO(adminAcct_);
+        List<UserGroup> groupsContainingUser = ugao.findUserGroupsForUser(_userName);
+
+        for (UserGroup ug : groupsContainingUser)
+        {
+            String groupName = ug.getUserGroupName();
+
+            if (readWriteAclWhitelist_.contains(groupName))
+            {
+                String prefix = readWriteAclWhitelist_.getPathPrefix(groupName);
+
+                log_.debug("isAllowedToReadWriteAclForPath - Group path prefix = {}", prefix);
+
+                if (Paths.get(_path).startsWith(prefix))
+                {
+                    log_.debug("isAllowedToReadWriteAclForPath - Group [{}] has special " +
+                               "privileges to read/write ACLs, access allowed.", groupName);
+                    return true;
+                }
+            }
+        }
+
+        log_.debug("isAllowedToReadWriteAclForPath - User [{}] is not a member of " +
+                   "any group with special privileges.", _userName);
+        
+        return false;
+    }
 
     @Override
     public Access checkAcl(Subject _subject, Inode _inode, int _accessMask) throws ChimeraNFSException, IOException
@@ -652,59 +699,28 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                 return Access.ALLOW;
             }
 
+            // Detect if modifications to attributes or ACLs was requested (e.g. nfs4_getfacl/nfs4_setfacl).
             if ((_accessMask & (ACE4_READ_ACL | ACE4_WRITE_ACL | ACE4_READ_ATTRIBUTES | ACE4_WRITE_ATTRIBUTES)) != 0)
             {
-                // TODO Add comments.
+                // Administrators are always allowed to read/write attributes and ACLs.
+                if (isAdministrator(userName))
                 {
-                    UserAO uao = factory_.getUserAO(adminAcct_);
-
-                    if (uao.findByName(userName).getUserType() == UserTypeEnum.RODS_ADMIN)
-                    {
-                        log_.debug("checkAcl - User is an iRODS administrator, access allowed.");
-                        accessCache_.put(cachedAccessKey, Access.ALLOW);
-                        return Access.ALLOW;
-                    }
+                    log_.debug("checkAcl - User is an iRODS administrator, access allowed.");
+                    accessCache_.put(cachedAccessKey, Access.ALLOW);
+                    return Access.ALLOW;
                 }
-
-                if (privilegedSetAclNames_.contains(userName))
+                
+                // Checks the ACL whitelist to see if the user should be allowed to read/write attributes and ACLs.
+                if (isAllowedToReadWriteAclForPath(userName, path))
                 {
-                    String prefix = privilegedSetAclNames_.getPathPrefix(userName);
-                    
-                    log_.debug("checkAcl - User path prefix = {}", prefix);
-                    
-                    if (Paths.get(path).startsWith(prefix))
-                    {
-                        log_.debug("checkAcl - User [{}] has special privileges to modify ACLs, access allowed.", userName);
-                        accessCache_.put(cachedAccessKey, Access.ALLOW);
-                        return Access.ALLOW;
-                    }
-                }
-
-                UserGroupAO ugao = factory_.getUserGroupAO(adminAcct_);
-                List<UserGroup> groupsContainingUser = ugao.findUserGroupsForUser(userName);
-
-                for (UserGroup ug : groupsContainingUser)
-                {
-                    String groupName = ug.getUserGroupName();
-
-                    if (privilegedSetAclNames_.contains(groupName))
-                    {
-                        String prefix = privilegedSetAclNames_.getPathPrefix(groupName);
-                        
-                        log_.debug("checkAcl - Group path prefix = {}", prefix);
-                        
-                        if (Paths.get(path).startsWith(prefix))
-                        {
-                            log_.debug("checkAcl - Group [{}] has special privileges to modify ACLs, access allowed.", groupName);
-                            accessCache_.put(cachedAccessKey, Access.ALLOW);
-                            return Access.ALLOW;
-                        }
-                    }
+                    log_.debug("checkAcl - User [{}] has special privileges to read/write ACLs, access allowed.", userName);
+                    accessCache_.put(cachedAccessKey, Access.ALLOW);
+                    return Access.ALLOW;
                 }
             }
             else
             {
-                log_.debug("checkAcl - Attribute/ACL operation not requested");
+                log_.debug("checkAcl - No attribute/ACL operations requested.");
             }
 
             Optional<UserFilePermission> perm = getHighestUserPermissionForPath(path, userName);
@@ -1518,6 +1534,19 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     private IRODSUser getCurrentIRODSUser() throws IOException
     {
         return idMapper_.resolveUser(getUserID());
+    }
+
+    private boolean isAdministrator(String _userName) throws JargonException
+    {
+        UserAO uao = factory_.getUserAO(adminAcct_);
+        User user = uao.findByName(_userName);
+        
+        if (null == user)
+        {
+            return false;
+        }
+
+        return user.getUserType() == UserTypeEnum.RODS_ADMIN;
     }
 
     private void closeCurrentConnection() throws IOException
