@@ -8,11 +8,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class NFSServerConfig
 {
-    private int port_;
-    private String iRODSMntPoint_;
-    private int userInfoRefreshTimeInMillis_;
-    private int fileInfoRefreshTimeInMillis_;
-    private int userAccessRefreshTimeInMillis_;
+    @JsonProperty("port")                                          private int port_;
+    @JsonProperty("irods_mount_point")                             private String iRODSMntPoint_;
+    @JsonProperty("user_information_refresh_time_in_milliseconds") private int userInfoRefreshTimeInMillis_;
+    @JsonProperty("file_information_refresh_time_in_milliseconds") private int fileInfoRefreshTimeInMillis_;
+    @JsonProperty("user_access_refresh_time_in_milliseconds")      private int userAccessRefreshTimeInMillis_;
     
     // @formatter:off
     @JsonCreator

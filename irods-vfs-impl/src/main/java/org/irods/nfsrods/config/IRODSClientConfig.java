@@ -8,12 +8,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class IRODSClientConfig
 {
-    private String host_;
-    private int port_;
-    private String zone_;
-    private String defResc_;
-    private String sslNegPolicy_;
-    private IRODSProxyAdminAccountConfig proxyAdminAcctConfig_;
+    @JsonProperty("host")                   private String host_;
+    @JsonProperty("port")                   private int port_;
+    @JsonProperty("zone")                   private String zone_;
+    @JsonProperty("default_resource")       private String defResc_;
+    @JsonProperty("ssl_negotiation_policy") private String sslNegPolicy_;
+    @JsonProperty("proxy_admin_account")    private IRODSProxyAdminAccountConfig proxyAdminAcctConfig_;
     
     // @formatter:off
     @JsonCreator

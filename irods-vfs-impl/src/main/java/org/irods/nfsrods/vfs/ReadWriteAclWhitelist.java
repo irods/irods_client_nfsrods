@@ -24,9 +24,9 @@ import org.irods.jargon.core.query.RodsGenQueryEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PrivilegedSetAclNames
+public class ReadWriteAclWhitelist
 {
-    private static final Logger log_ = LoggerFactory.getLogger(PrivilegedSetAclNames.class);
+    private static final Logger log_ = LoggerFactory.getLogger(ReadWriteAclWhitelist.class);
     
     private static final String GRANT_NFS4_SETFACL_PRIVILEGE = "irods::nfsrods::grant_nfs4_setfacl";
 
@@ -36,7 +36,7 @@ public class PrivilegedSetAclNames
     private ReadWriteLock lock_;
     private ScheduledExecutorService scheduler_;
     
-    public PrivilegedSetAclNames(IRODSAccessObjectFactory _factory,
+    public ReadWriteAclWhitelist(IRODSAccessObjectFactory _factory,
                                  IRODSAccount _adminAcct)
     {
         factory_ = _factory;

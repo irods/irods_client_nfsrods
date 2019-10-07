@@ -8,8 +8,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class IRODSProxyAdminAccountConfig
 {
-    private String username_;
-    private String password_;
+    @JsonProperty("username") private String username_;
+    @JsonProperty("password") private String password_;
     
     // @formatter:off
     @JsonCreator

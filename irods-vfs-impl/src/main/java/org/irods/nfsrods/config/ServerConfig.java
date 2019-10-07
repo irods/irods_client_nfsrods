@@ -8,8 +8,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ServerConfig
 {
-    private NFSServerConfig nfsServerConfig_;
-    private IRODSClientConfig iRODSClientConfig_;
+    @JsonProperty("nfs_server")   private NFSServerConfig nfsServerConfig_;
+    @JsonProperty("irods_client") private IRODSClientConfig iRODSClientConfig_;
     
     // @formatter:off
     @JsonCreator
