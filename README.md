@@ -16,6 +16,7 @@ A standalone NFSv4.1 server (via [nfs4j](https://github.com/dCache/nfs4j)) with 
   + [Using nfs4_getfacl](#using-nfs4_getfacl)
   + [nfs4_setfacl Whitelist](#nfs4_setfacl-whitelist)
 - [TODOs](#todos)
+- [Notes](#notes)
 - [Troubleshooting](#troubleshooting)
 
 ## Features
@@ -26,7 +27,7 @@ A standalone NFSv4.1 server (via [nfs4j](https://github.com/dCache/nfs4j)) with 
 - Supports many common *nix commands and software (e.g. mkdir, cat, etc.)
 
 ## Requirements
-- iRODS v4.2.6
+- iRODS v4.2.6+
 - [iRODS REP for Collection Mtime](https://github.com/irods/irods_rule_engine_plugin_update_collection_mtime)
 - Docker (as of this writing, v18.09.0)
 - OS NFS packages (e.g. Ubuntu 16.04: nfs-common)
@@ -57,7 +58,7 @@ These files will be mounted into the NFSRODS docker container. This will be disc
 At this time, this file should not be modified. Administrators are expected to limit access to the mount point through other means.
 
 #### Configuration File: log4j.properties
-NFSRODS uses Log4j 2 for managing and writing log files. The default config will log messages with a level >= `WARN` to `stdout`. Configuring Log4j is out of scope for this documentation. It should be easy to google steps on this.
+NFSRODS uses [Log4j 2](https://logging.apache.org/log4j/2.x/) for managing and writing log files. The default config will log messages with a level >= `WARN` to `stdout`. Configuring Log4j is out of scope for this documentation.
 
 #### Configuration File: server.json
 You'll need to set each option to match your iRODS environment. Each option is explained below.
