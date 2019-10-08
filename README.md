@@ -12,8 +12,9 @@ A standalone NFSv4.1 server (via [nfs4j](https://github.com/dCache/nfs4j)) with 
   + [Running](#running)
   + [Mounting](#mounting)
 - [Unix Permissions and NFSv4 ACLs](#unix-permissions-and-nfsv4-acls)
-  + [Using **nfs4_setfacl**](#using-nfs4_setfacl)
-  + [Using **nfs4_getfacl**](#using-nfs4_getfacl)
+  + [Using nfs4_setfacl](#using-nfs4_setfacl)
+  + [Using nfs4_getfacl](#using-nfs4_getfacl)
+  + [nfs4_setfacl Whitelist](#nfs4_setfacl-whitelist)
 - [TODOs](#todos)
 - [Troubleshooting](#troubleshooting)
 
@@ -186,7 +187,7 @@ Given the following:
 ```bash
 $ nfs4_setfacl -a A::john@:ro foo.txt
 ```
-NFSRODS will see that the **ACE4_READ_DATA** and **ACE4_WRITE_OWNER** bits are set. It then maps these to appropriate iRODS permissions and takes the max of those. NFSRODS will then set `john`'s permission on `foo.txt` to `OWN`.
+NFSRODS will see that the **ACE4_READ_DATA** and **ACE4_WRITE_OWNER** bits are set. It then maps these to appropriate iRODS permissions and takes the max of those. NFSRODS will then set `john`'s permission on `foo.txt` to `own`.
 
 ### Using nfs4_getfacl
 Using this command is much simpler. When invoked, it returns the list of iRODS permissions on an object as an ACL. The mapping used for translation is shown below.
@@ -197,6 +198,31 @@ Using this command is much simpler. When invoked, it returns the list of iRODS p
 | write       | rwa                  |
 | read        | r                    |
 
+### nfs4_setfacl Whitelist
+NFSRODS offers a whitelist for granting `nfs4_setfacl` permission to particular users.
+
+If a user is in the whitelist or in a group in the whitelist, they can run `nfs4_setfacl` on the specified logical path or any collection or data object **below** it, regardless of their iRODS permissions on that collection or data object.
+
+A `rodsadmin` can add a user to the whitelist by adding a specific iRODS AVU (metadata) on the user.
+```bash
+$ imeta add -u <username> irods::nfsrods::grant_nfs4_setfacl <logical_path_prefix>
+```
+The following example demonstrates adding `alice#tempZone` to the whitelist with a prefix of `/tempZone/project_a/lab/notes`:
+```bash
+$ imeta add -u alice irods::nfsrods::grant_nfs4_setfacl /tempZone/project_a/lab/notes
+$ imeta ls -u alice
+AVUs defined for user alice#tempZone:
+attribute: irods::nfsrods::grant_nfs4_setfacl
+value: /tempZone/project_a/lab/notes
+units:
+```
+
+A user can set permissions via `nfs4_setfacl` on a collection or data object if any of the following are true:
+1. The user has `own` permission on the collection or data object.
+2. The user is a member of a group that has `own` permission on the collection or data object.
+3. The user is in the whitelist with a prefix that covers the collection or data object.
+4. The user is a member of a group in the whitelist with a prefix that covers the collection or data object.
+
 ### Additional NFSv4 Information
 - [RFC 7530](https://tools.ietf.org/html/rfc7530)
 - [HOWTO: Use NFSv4 ACL](https://www.osc.edu/book/export/html/4523)
@@ -204,7 +230,9 @@ Using this command is much simpler. When invoked, it returns the list of iRODS p
 ## TODOs
 - Implement support for SSL connections to iRODS
 - Implement support for Parallel File Transfers
-- Provide POSIX Test Suite coverage
+
+## Notes
+- `chmod` is currently implemented as a `NOP` and will return `0`.
 
 ## Troubleshooting
 ### Q. The NFSRODS docker container won't start. Why?
