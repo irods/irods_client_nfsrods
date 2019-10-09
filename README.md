@@ -219,10 +219,11 @@ units:
 ```
 
 A user can set permissions via `nfs4_setfacl` on a collection or data object if any of the following are true:
-1. The user has `own` permission on the collection or data object.
-2. The user is a member of a group that has `own` permission on the collection or data object.
-3. The user is in the whitelist with a prefix that covers the collection or data object.
-4. The user is a member of a group in the whitelist with a prefix that covers the collection or data object.
+1. The user is an iRODS administrator (i.e. `rodsadmin`).
+2. The user has `own` permission on the collection or data object.
+3. The user is a member of a group that has `own` permission on the collection or data object.
+4. The user is in the whitelist with a prefix that covers the collection or data object.
+5. The user is a member of a group in the whitelist with a prefix that covers the collection or data object.
 
 ### Additional NFSv4 Information
 - [RFC 7530](https://tools.ietf.org/html/rfc7530)
