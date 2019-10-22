@@ -68,12 +68,15 @@ class InodeToPathMapper
 
     public Long getAndIncrementFileID()
     {
-        if (!availableInodeNumbers_.isEmpty())
+        synchronized (availableInodeNumbers_)
         {
-            Iterator<Long> it = availableInodeNumbers_.iterator();
-            Long inodeNumber = it.next();
-            it.remove();
-            return inodeNumber;
+            if (!availableInodeNumbers_.isEmpty())
+            {
+                Iterator<Long> it = availableInodeNumbers_.iterator();
+                Long inodeNumber = it.next();
+                it.remove();
+                return inodeNumber;
+            }
         }
 
         return fileID_.getAndIncrement();
