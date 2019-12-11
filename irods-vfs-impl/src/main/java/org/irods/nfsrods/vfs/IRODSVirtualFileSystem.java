@@ -46,7 +46,6 @@ import javax.security.auth.Subject;
 
 import org.dcache.auth.Subjects;
 import org.dcache.nfs.ChimeraNFSException;
-import org.dcache.nfs.status.AccessException;
 import org.dcache.nfs.status.NoEntException;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.nfs.v4.xdr.aceflag4;
@@ -1078,21 +1077,18 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     public int read(Inode _inode, byte[] _data, long _offset, int _count) throws IOException
     {
         log_.debug("vfs::read");
-        log_.debug("read - _data.length = {}", _data.length);
-        log_.debug("read - _offset      = {}", _offset);
-        log_.debug("read - _count       = {}", _count);
 
         try
         {
-            IRODSAccount acct = getCurrentIRODSUser().getAccount();
             Path path = getPath(toInodeNumber(_inode));
-            IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
-            
-            if (!ff.instanceIRODSFile(path.toString()).canRead())
-            {
-                throw new AccessException("[" + acct.getUserName() + "] does not have permission to read from [" + path + "]");
-            }
 
+            log_.debug("read - _inode path  = {}", path);
+            log_.debug("read - _data.length = {}", _data.length);
+            log_.debug("read - _offset      = {}", _offset);
+            log_.debug("read - _count       = {}", _count);
+
+            IRODSAccount acct = getCurrentIRODSUser().getAccount();
+            IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
             IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString(), OpenFlags.READ);
             
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
@@ -1203,12 +1199,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
-
-            if (!ff.instanceIRODSFile(path.toString()).canWrite())
-            {
-                throw new AccessException("[" + acct.getUserName() + "] does not have permission to write to [" + path + "]");
-            }
-
             IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString(), OpenFlags.READ_WRITE);
 
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
