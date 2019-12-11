@@ -64,6 +64,7 @@ public class ServerMain
         OncRpcSvc nfsSvc = null;
 
         configureSslNegotiationPolicy(config, ifsys);
+        configureConnectionTimeout(config, ifsys);
 
         Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<>(ifsys, "Closing iRODS connections")));
 
@@ -108,6 +109,14 @@ public class ServerMain
         {
             log_.error(e.getMessage());
         }
+    }
+
+    private static void configureConnectionTimeout(ServerConfig _config, IRODSFileSystem _ifsys)
+    {
+        IRODSSession session = _ifsys.getIrodsSession();
+        SettableJargonProperties props = new SettableJargonProperties(session.getJargonProperties());
+        props.setIRODSSocketTimeout(_config.getIRODSClientConfig().getConnectionTimeout());
+        session.setJargonProperties(props);
     }
 
     private static void configureSslNegotiationPolicy(ServerConfig _config, IRODSFileSystem _ifsys) throws JargonException

@@ -13,6 +13,7 @@
         "port": 1247,
         "default_resource": "demoResc",
         "ssl_negotiation_policy": "CS_NEG_REFUSE",
+        "connection_timeout_in_seconds": 600,
         "proxy_admin_account": {
             "username": "<username>",
             "password": "<password>"
