@@ -104,6 +104,10 @@ You'll need to set each option to match your iRODS environment. Each option is e
         //
         // NOTE: NFSRODS does not yet support SSL/TLS.
         "ssl_negotiation_policy": "CS_NEG_REFUSE",
+        
+        // The total amount of time before an idle connection times out.
+        // Defaults to 600 seconds.
+        "connection_timeout_in_seconds": 600,
 
         // An administrative iRODS account is required to carry out each request.
         // The account specified here is used as a proxy to connect to the iRODS
