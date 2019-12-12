@@ -867,13 +867,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
                 log_.debug("list - Entry = {}", path);
 
-                long inodeNumber;
+                Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(path);
 
-                if (inodeToPathMapper_.getInodeToPathMap().containsValue(path))
-                {
-                    inodeNumber = getInodeNumber(path);
-                }
-                else
+                if (null == inodeNumber)
                 {
                     inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
                     inodeToPathMapper_.map(inodeNumber, path);
@@ -928,21 +924,26 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             // inode object for the new mapping.
             if (isTargetValid)
             {
-                if (inodeToPathMapper_.getPathToInodeMap().containsKey(targetPath))
+                Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(targetPath);
+
+                if (null != inodeNumber)
                 {
-                    return toFh(getInodeNumber(targetPath));
+                    return toFh(inodeNumber);
                 }
 
-                long newInodeNumber = inodeToPathMapper_.getAndIncrementFileID();
-                inodeToPathMapper_.map(newInodeNumber, targetPath);
-                return toFh(newInodeNumber);
+                inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
+                inodeToPathMapper_.map(inodeNumber, targetPath);
+
+                return toFh(inodeNumber);
             }
+
+            Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(targetPath);
 
             // If the target path is not registered in iRODS and NFSRODS has previously
             // mapped it, then unmap it. This keeps NFSRODS in sync with iRODS.
-            if (inodeToPathMapper_.getPathToInodeMap().containsKey(targetPath))
+            if (null != inodeNumber)
             {
-                inodeToPathMapper_.unmap(getInodeNumber(targetPath), targetPath);
+                inodeToPathMapper_.unmap(inodeNumber, targetPath);
             }
 
             // It is VERY important that this exception is thrown here.
@@ -1050,7 +1051,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             log_.debug("move - Updating mappings between paths and inodes ...");
 
-            inodeToPathMapper_.remap(inodeToPathMapper_.getPathToInodeMap().get(srcPath), srcPath, dstPath);
+            inodeToPathMapper_.remap(getInodeNumber(srcPath), srcPath, dstPath);
 
             return true;
         }
@@ -1331,7 +1332,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
     private Path getPath(long _inodeNumber) throws IOException
     {
-        Path path = inodeToPathMapper_.getInodeToPathMap().get(_inodeNumber);
+        Path path = inodeToPathMapper_.getPathByInodeNumber(_inodeNumber);
 
         if (path == null)
         {
@@ -1343,7 +1344,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
     private long getInodeNumber(Path _path) throws IOException
     {
-        Long inodeNumber = inodeToPathMapper_.getPathToInodeMap().get(_path);
+        Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(_path);
 
         if (inodeNumber == null)
         {
