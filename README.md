@@ -128,7 +128,6 @@ $ docker run -d --name nfsrods \
              -p <public_port>:2049 \
              -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
              -v </full/path/to/etc/passwd/formatted/file>:/etc/passwd:ro \
-             -v </full/path/to/etc/shadow/formatted/file>:/etc/shadow:ro \
              nfsrods
 ```
 
@@ -138,9 +137,8 @@ This command does the following:
 - Exposes NFSRODS via the port `<public_port>`
 - Maps the local config directory into the container as read-only.
 - Maps the local `/etc/passwd` formatted file into the container as read-only.
-- Maps the local `/etc/shadow` formatted file into the container as read-only.
 
-**IMPORTANT:** `/etc/passwd` and `/etc/shadow` are expected to contain all of the users planning to use NFSRODS. The users defined in these files **MUST** be defined in iRODS as well. Their usernames must match the names defined in these files exactly as this is how NFSRODS matches users to the correct account in iRODS.
+**IMPORTANT:** `/etc/passwd` is expected to contain all of the users planning to use NFSRODS. The users defined in these files **MUST** be defined in iRODS as well. Their usernames must match the names defined in these files exactly as this is how NFSRODS matches users to the correct account in iRODS.
 
 If you want to see the output of the server, run the following command:
 ```bash
@@ -253,7 +251,6 @@ $ docker run -it --name nfsrods \
              -p <public_port>:2049 \
              -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
              -v </full/path/to/etc/passwd/formatted/file>:/etc/passwd:ro \
-             -v </full/path/to/etc/shadow/formatted/file>:/etc/shadow:ro \
              nfsrods
 ```
 This command will cause the log messages to appear in your terminal. If there are any errors during start-up, they will appear in the output. Missing configuration options will have a prefix of **Missing server configuration option**.
