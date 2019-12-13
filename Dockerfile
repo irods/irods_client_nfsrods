@@ -13,6 +13,10 @@ RUN cd irods_client_nfsrods && \
     git checkout ${_sha} && \
     mvn clean install -Dmaven.test.skip=true
 
+# Provide default log4j configuration.
+# This keeps log4j quiet when instructing the container to print the SHA.
+ADD irods-vfs-impl/config/log4j.properties /nfsrods_config/log4j.properties
+
 ADD start.sh /
 RUN chmod +x start.sh
 
