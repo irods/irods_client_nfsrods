@@ -148,6 +148,11 @@ $ docker logs -f nfsrods
 ```
 This only works if the logging has been configured to write to stdout.
 
+On startup, the NFSRODS server logs the build information (time, version, and git-SHA). You can get this information at any time by executing the following command:
+```bash
+$ docker run --rm nfsrods sha
+```
+
 ### Mounting
 ```bash
 $ sudo mkdir <mount_point>

@@ -2,6 +2,7 @@ package org.irods.nfsrods.vfs;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Properties;
 
 import javax.cache.CacheManager;
 import javax.cache.Caching;
@@ -35,6 +36,7 @@ public class ServerMain
     private static final String LOGGER_CONFIG_PATH  = NFSRODS_CONFIG_HOME + "/log4j.properties";
     private static final String SERVER_CONFIG_PATH  = NFSRODS_CONFIG_HOME + "/server.json";
     private static final String EXPORTS_CONFIG_PATH = NFSRODS_CONFIG_HOME + "/exports";
+    private static final String GIT_PROPERTIES      = "/git.properties";
     // @formatter:on
 
     static
@@ -44,8 +46,20 @@ public class ServerMain
 
     private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
 
-    public static void main(String[] args) throws JargonException
+    public static void main(String[] args) throws JargonException, IOException
     {
+        {
+            Properties props = new Properties();
+            props.load(ServerMain.class.getResourceAsStream(GIT_PROPERTIES));
+
+            if (printSHA(args, props))
+            {
+                return;
+            }
+                
+            logSHA(props);
+        }
+
         ServerConfig config = null;
 
         try
@@ -109,6 +123,27 @@ public class ServerMain
         {
             log_.error(e.getMessage());
         }
+    }
+    
+    private static boolean printSHA(String[] args, Properties _props) throws IOException
+    {
+        if (args.length > 0 && "sha".equals(args[0]))
+        {
+            System.out.println("Build Time    => " + _props.getProperty("git.build.time"));
+            System.out.println("Build Version => " + _props.getProperty("git.build.version"));
+            System.out.println("Build SHA     => " + _props.getProperty("git.commit.id.full"));
+
+            return true;
+        }
+        
+        return false;
+    }
+    
+    private static void logSHA(Properties _props)
+    {
+        log_.info("Build Time    => " + _props.getProperty("git.build.time"));
+        log_.info("Build Version => " + _props.getProperty("git.build.version"));
+        log_.info("Build SHA     => " + _props.getProperty("git.commit.id.full"));
     }
 
     private static void configureConnectionTimeout(ServerConfig _config, IRODSFileSystem _ifsys)
