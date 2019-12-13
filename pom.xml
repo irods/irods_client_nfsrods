@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.irods.jargon</groupId>
 	<artifactId>nfs4j-irodsvfs-pom</artifactId>
-	<version>1.0.0-SNAPSHOT</version>
+	<version>0.9.2</version>
 	<parent>
 		<groupId>org.irods</groupId>
 		<artifactId>jargon-pom</artifactId>
@@ -18,8 +18,8 @@
 		<jargon.version>4.3.1.0-SNAPSHOT</jargon.version>
 	</properties>
 	<organization>
-		<name>DICE</name>
-		<url>http://www.irods.org</url>
+		<name>iRODS Consortium</name>
+		<url>https://irods.org</url>
 	</organization>
 	<repositories>
 		<repository>
@@ -57,11 +57,11 @@
 	</repositories>
 	<developers>
 		<developer>
-			<id>mconway</id>
-			<name>Mike Conway</name>
-			<email>michael.c.conway@gmail.com</email>
+			<id>korydraughn</id>
+			<name>Kory Draughn</name>
+			<email>info@irods.org</email>
 			<organization>iRODS Consortium</organization>
-			<organizationUrl>http://www.irods.org</organizationUrl>
+			<organizationUrl>https://irods.org</organizationUrl>
 			<roles>
 				<role>developer</role>
 			</roles>

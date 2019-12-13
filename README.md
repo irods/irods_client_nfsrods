@@ -138,7 +138,7 @@ This command does the following:
 - Maps the local config directory into the container as read-only.
 - Maps the local `/etc/passwd` formatted file into the container as read-only.
 
-**IMPORTANT:** `/etc/passwd` is expected to contain all of the users planning to use NFSRODS. The users defined in these files **MUST** be defined in iRODS as well. Their usernames must match the names defined in these files exactly as this is how NFSRODS matches users to the correct account in iRODS.
+**IMPORTANT:** `/etc/passwd` is expected to contain all of the users planning to use NFSRODS. The users defined in this file **MUST** be defined in iRODS as well. Their usernames must match the names defined in this file exactly as this is how NFSRODS matches users to the correct account in iRODS.
 
 If you want to see the output of the server, run the following command:
 ```bash
