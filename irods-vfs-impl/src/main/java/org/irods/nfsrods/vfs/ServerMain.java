@@ -122,6 +122,7 @@ public class ServerMain
         catch (JargonException | IOException | InterruptedException e)
         {
             log_.error(e.getMessage());
+            System.exit(1);
         }
     }
     
