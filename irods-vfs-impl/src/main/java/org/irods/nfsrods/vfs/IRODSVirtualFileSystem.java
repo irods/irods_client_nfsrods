@@ -1542,7 +1542,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
     private void closeCurrentConnection() throws IOException
     {
-        factory_.closeSessionAndEatExceptions(getCurrentIRODSUser().getAccount());
+        factory_.closeSessionAndEatExceptions();
     }
 
     private static class AutoClosedIRODSFile implements AutoCloseable

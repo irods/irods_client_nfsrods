@@ -56,7 +56,14 @@ class InodeToPathMapper
                                                            adminPw, rootPath, zone, rodsSvrConfig.getDefaultResource(),
                                                            adminAcct, zone);
 
-        establishRoot(_factory.getIRODSFileFactory(acct).instanceIRODSFile(rootPath));
+        try
+        {
+            establishRoot(_factory.getIRODSFileFactory(acct).instanceIRODSFile(rootPath));
+        }
+        finally
+        {
+            _factory.closeSessionAndEatExceptions();
+        }
     }
 
     public Long getAndIncrementFileID()
@@ -79,22 +86,11 @@ class InodeToPathMapper
         return ref.value;
     }
 
-    private void establishRoot(IRODSFile _irodsMountPoint)
+    private void establishRoot(IRODSFile _irodsMountPoint) throws DataNotFoundException
     {
         if (!_irodsMountPoint.exists())
         {
-            log_.error("Root file does not exist or it cannot be read");
-
-            try
-            {
-                throw new DataNotFoundException("Cannot establish root at [" + _irodsMountPoint + "]");
-            }
-            catch (DataNotFoundException e)
-            {
-                log_.error(e.getMessage());
-            }
-
-            return;
+            throw new DataNotFoundException("Cannot establish root at [" + _irodsMountPoint + "]");
         }
 
         log_.debug("establishRoot - Mapping root to [{}] ...", _irodsMountPoint);

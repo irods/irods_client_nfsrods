@@ -45,6 +45,7 @@ public class ReadWriteAclWhitelist
         lock_ = new ReentrantReadWriteLock();
         scheduler_ = Executors.newSingleThreadScheduledExecutor();
 
+        // Periodically update the nfs4_setfacl whitelist.
         scheduler_.scheduleAtFixedRate(() -> {
             Lock lk = lock_.writeLock();
             
@@ -82,6 +83,7 @@ public class ReadWriteAclWhitelist
             finally
             {
                 lk.unlock();
+                factory_.closeSessionAndEatExceptions();
             }
         }, 0, 10, TimeUnit.SECONDS);
     }
