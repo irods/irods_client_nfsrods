@@ -21,5 +21,7 @@
 
   run ls ${FILENAME}
   [ $status -eq 2 ]
-  [ "${lines[0]}" = "ls: cannot access '${FILENAME}': No such file or directory" ]
+  [[ "${lines[0]}" =~ "ls: cannot access" ]]
+  [[ "${lines[0]}" =~ "${FILENAME}" ]]
+  [[ "${lines[0]}" =~ "No such file or directory" ]]
 }
