@@ -151,6 +151,25 @@ On startup, the NFSRODS server logs the build information (time, version, and gi
 $ docker run --rm nfsrods sha
 ```
 
+#### sssd integration
+
+In addition to a flat `/etc/passwd` file, the default nfsrods
+container also supports `libnss-sss`. It can be used by configuring
+sssd on the container host and binding the sssd socket into the
+container.
+
+```bash
+$ docker run -d --name nfsrods \
+             -p <public_port>:2049 \
+             -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
+             -v </full/path/to/etc/passwd/formatted/file>:/etc/passwd:ro \
+             -v /var/lib/sss:/var/lib/sss \
+             nfsrods
+```
+
+Using sssd, nfsrods can use any sssd domain for ID mapping, including
+AD or LDAP.
+
 ### Mounting
 ```bash
 $ sudo mkdir <mount_point>
