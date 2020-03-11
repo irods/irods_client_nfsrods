@@ -835,6 +835,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     public DirectoryStream list(Inode _inode, byte[] _verifier, long _cookie) throws IOException
     {
         log_.debug("vfs::list");
+        log_.debug("list - _cookie = {}", _cookie);
 
         List<DirectoryEntry> list = new ArrayList<>();
 
@@ -875,9 +876,16 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                     inodeToPathMapper_.map(inodeNumber, path);
                 }
 
-                Stat stat = statPath(path, inodeNumber);
-                Inode inode = toFh(inodeNumber);
-                list.add(new DirectoryEntry(path.getFileName().toString(), inode, stat, inodeNumber));
+                // If the cookie value is less than the inode number of the current entry,
+                // then that means the path needs to be added to the listing. Previously handled
+                // entries will have inode numbers that are less than or equal to the current cookie value.
+                // The following if-statement protects the server from hitting the readdir/duplicate-cookie issue.
+                if (inodeNumber > _cookie)
+                {
+                    Stat stat = statPath(path, inodeNumber);
+                    Inode inode = toFh(inodeNumber);
+                    list.add(new DirectoryEntry(path.getFileName().toString(), inode, stat, inodeNumber));
+                }
             }
         }
         catch (JargonException e)
