@@ -248,6 +248,8 @@ A user can set permissions via `nfs4_setfacl` on a collection or data object if 
 
 ## Notes
 - `chmod` is currently implemented as a `NOP` and will return `0`.
+- NFSRODS currently reports disk free (`df -a`) as `0` to avoid being misleading to other programs.
+
 
 ## Troubleshooting
 ### Q. The NFSRODS docker container won't start. Why?
