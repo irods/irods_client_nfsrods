@@ -101,9 +101,7 @@ You'll need to set each option to match your iRODS environment. Each option is e
         // - CS_NEG_REQUIRE: Only use SSL/TLS.
         // - CS_NEG_DONT_CARE: Use SSL/TLS if the iRODS server is not set to CS_NEG_REFUSE.
         // - CS_NEG_REFUSE: Do NOT use SSL/TLS.
-        //
-        // NOTE: NFSRODS does not yet support SSL/TLS.
-        "ssl_negotiation_policy": "CS_NEG_REFUSE",
+        "ssl_negotiation_policy": "CS_NEG_DONT_CARE",
         
         // The total amount of time before an idle connection times out.
         // Defaults to 600 seconds.
@@ -150,6 +148,15 @@ On startup, the NFSRODS server logs the build information (time, version, and gi
 ```bash
 $ docker run --rm nfsrods sha
 ```
+
+#### SSL
+
+If you want to connect NFSRODS to an iRODS Zone that is using SSL, a certificate file can be mounted for use within the container:
+```bash
+             -v </full/path/to/certificate.crt>:/nfsrods_ssl.crt:ro
+```
+
+The container will load any cert it finds at `/nfsrods_ssl.crt` within the container into the OpenJDK keystore.
 
 ### Mounting
 ```bash
@@ -237,7 +244,6 @@ A user can set permissions via `nfs4_setfacl` on a collection or data object if 
 - [HOWTO: Use NFSv4 ACL](https://www.osc.edu/book/export/html/4523)
 
 ## TODOs
-- Implement support for SSL connections to iRODS
 - Implement support for Parallel File Transfers
 
 ## Notes
