@@ -8,11 +8,11 @@
 	<parent>
 		<groupId>org.irods.jargon</groupId>
 		<artifactId>nfs4j-irodsvfs-pom</artifactId>
-		<version>0.9.3</version>
+		<version>0.9.4</version>
 	</parent>
 	<packaging>jar</packaging>
 	<name>nfsrods</name>
-	<version>0.9.3</version>
+	<version>0.9.4</version>
 	<description>iRODS VFS implementation for NFS4J</description>
 
 	<repositories>
