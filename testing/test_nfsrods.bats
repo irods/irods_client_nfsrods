@@ -7,23 +7,23 @@
 ############################################
 
 @test "create, list, and remove file" {
-  FILENAME=removeme
+    FILENAME=removeme
 
-  run echo ${FILENAME} > ${FILENAME}
-  [ $status -eq 0 ]
+    run echo ${FILENAME} > ${FILENAME}
+    [ $status -eq 0 ]
 
-  run ls ${FILENAME}
-  [ $status -eq 0 ]
-  [ "${lines[0]}" = "${FILENAME}" ]
+    run ls ${FILENAME}
+    [ $status -eq 0 ]
+    [ "${lines[0]}" = "${FILENAME}" ]
 
-  run rm ${FILENAME}
-  [ $status -eq 0 ]
+    run rm ${FILENAME}
+    [ $status -eq 0 ]
 
-  run ls ${FILENAME}
-  [ $status -eq 2 ]
-  [[ "${lines[0]}" =~ "ls: cannot access" ]]
-  [[ "${lines[0]}" =~ "${FILENAME}" ]]
-  [[ "${lines[0]}" =~ "No such file or directory" ]]
+    run ls ${FILENAME}
+    [ $status -eq 2 ]
+    [[ "${lines[0]}" =~ "ls: cannot access" ]]
+    [[ "${lines[0]}" =~ "${FILENAME}" ]]
+    [[ "${lines[0]}" =~ "No such file or directory" ]]
 }
 
 @test "listing directory with large number of entries does not trigger duplicate cookie error" {
@@ -41,4 +41,3 @@
     run rm -rf ${SANDBOX}
     [ $status -eq 0 ]
 }
-

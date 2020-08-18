@@ -46,6 +46,7 @@ import javax.security.auth.Subject;
 
 import org.dcache.auth.Subjects;
 import org.dcache.nfs.ChimeraNFSException;
+import org.dcache.nfs.status.ExistException;
 import org.dcache.nfs.status.NoEntException;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.dcache.nfs.v4.xdr.aceflag4;
@@ -66,6 +67,7 @@ import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.packinstr.DataObjInp.OpenFlags;
+import org.irods.jargon.core.protovalues.ErrorEnum;
 import org.irods.jargon.core.protovalues.FilePermissionEnum;
 import org.irods.jargon.core.protovalues.UserTypeEnum;
 import org.irods.jargon.core.pub.CollectionAO;
@@ -106,6 +108,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     private final InodeToPathMapper inodeToPathMapper_;
     private final IRODSAccount adminAcct_;
     private final ReadWriteAclWhitelist readWriteAclWhitelist_;
+    private final boolean allowOverwriteOfExistingFiles_;
 
     private final MutableConfiguration<String, Stat> statObjectCacheConfig_; // Key: <username>_<path>
     private final Cache<String, Stat> statObjectCache_;                      // Key: <username>_<path>
@@ -154,6 +157,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         // @formatter:on
 
         readWriteAclWhitelist_ = new ReadWriteAclWhitelist(factory_, adminAcct_);
+        allowOverwriteOfExistingFiles_ = _config.getNfsServerConfig().allowOverwriteOfExistingFiles();
 
         int time = _config.getNfsServerConfig().getFileInfoRefreshTimeInMilliseconds();
 
@@ -1001,56 +1005,48 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     }
 
     @Override
-    public boolean move(Inode _inode, String _srcName, Inode _dest, String _dstName) throws IOException
+    public boolean move(Inode _srcParentInode, String _srcFilename, Inode _dstParentInode, String _dstFilename)
+        throws IOException
     {
         log_.debug("vfs::move");
 
-        Path srcParentPath = getPath(toInodeNumber(_inode));
-        Path dstParentPath = getPath(toInodeNumber(_dest));
+        Path srcParentPath = getPath(toInodeNumber(_srcParentInode));
+        Path dstParentPath = getPath(toInodeNumber(_dstParentInode));
 
         log_.debug("move - _inode path (src) = {}", srcParentPath);
         log_.debug("move - _inode path (dst) = {}", dstParentPath);
-        log_.debug("move - _srcName          = {}", _srcName);
-        log_.debug("move - _dstName          = {}", _dstName);
+        log_.debug("move - _srcName          = {}", _srcFilename);
+        log_.debug("move - _dstName          = {}", _dstFilename);
 
         IRODSAccount acct = getCurrentIRODSUser().getAccount();
 
         try
         {
-            Path srcPath = srcParentPath.resolve(_srcName);
+            Path srcPath = srcParentPath.resolve(_srcFilename);
+            Path dstPath = dstParentPath.resolve(_dstFilename);
 
-            log_.debug("move - Source path = {}", srcPath);
-
-            IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
-            Path dstPath = null;
-
-            if (_dstName != null && !_srcName.equals(_dstName))
-            {
-                dstPath = dstParentPath.resolve(_dstName);
-            }
-            else
-            {
-                dstPath = dstParentPath.resolve(_srcName);
-            }
-
+            log_.debug("move - Source path      = {}", srcPath);
             log_.debug("move - Destination path = {}", dstPath);
 
+            IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
             IRODSFile srcFile = ff.instanceIRODSFile(srcPath.toString());
             IRODSFile dstFile = ff.instanceIRODSFile(dstPath.toString());
+            
+            // Capture the existence of the destination path. This is required to properly
+            // update the mappings between inode numbers and paths.
+            final boolean unmapDstPath = dstFile.exists();
 
             try (AutoClosedIRODSFile ac0 = new AutoClosedIRODSFile(srcFile);
                  AutoClosedIRODSFile ac1 = new AutoClosedIRODSFile(dstFile))
             {
                 IRODSFileSystemAO fsao = factory_.getIRODSFileSystemAO(acct);
 
-                log_.debug("move - Is file? {}", srcFile.isFile());
-
                 if (srcFile.isFile())
                 {
                     log_.debug("move - Renaming data object from [{}] to [{}] ...", srcPath, dstPath);
-                    fsao.renameFile(srcFile, dstFile);
+                    fsao.renameFile(srcFile, dstFile, allowOverwriteOfExistingFiles_);
                 }
-                else
+                else if (srcFile.isDirectory())
                 {
                     log_.debug("move - Renaming collection from [{}] to [{}] ...", srcPath, dstPath);
                     fsao.renameDirectory(srcFile, dstFile);
@@ -1059,13 +1055,33 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             log_.debug("move - Updating mappings between paths and inodes ...");
 
+            // If the destination path exists in iRODS and has been mapped by the NFSRODS
+            // server, then that path must be unmapped before remapping to avoid an exception.
+            if (unmapDstPath)
+            {
+                Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(dstPath);
+
+                if (inodeNumber != null)
+                {
+                    inodeToPathMapper_.unmap(inodeNumber, dstPath);
+                }
+            }
+
             inodeToPathMapper_.remap(getInodeNumber(srcPath), srcPath, dstPath);
 
             return true;
         }
         catch (JargonException e)
         {
-            log_.error(e.getMessage());
+            log_.error("{} [iRODS Error Code = {}]", e.getMessage(), e.getUnderlyingIRODSExceptionCode());
+            
+            final ErrorEnum error = ErrorEnum.valueOf(e.getUnderlyingIRODSExceptionCode());
+
+            if (error == ErrorEnum.CAT_NAME_EXISTS_AS_DATAOBJ)
+            {
+                throw new ExistException(e.getMessage());
+            }
+
             throw new IOException(e);
         }
         finally
