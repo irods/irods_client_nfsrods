@@ -13,6 +13,7 @@ public class NFSServerConfig
     @JsonProperty("user_information_refresh_time_in_milliseconds") private int userInfoRefreshTimeInMillis_;
     @JsonProperty("file_information_refresh_time_in_milliseconds") private int fileInfoRefreshTimeInMillis_;
     @JsonProperty("user_access_refresh_time_in_milliseconds")      private int userAccessRefreshTimeInMillis_;
+    @JsonProperty("allow_overwrite_of_existing_files")             private boolean allowOverwriteOfExistingFiles_;
     
     // @formatter:off
     @JsonCreator
@@ -20,7 +21,8 @@ public class NFSServerConfig
                     @JsonProperty("irods_mount_point")                             String _iRODSMountPoint,
                     @JsonProperty("user_information_refresh_time_in_milliseconds") Integer _userInfoRefreshTimeInMillis,
                     @JsonProperty("file_information_refresh_time_in_milliseconds") Integer _fileInfoRefreshTimeInMillis,
-                    @JsonProperty("user_access_refresh_time_in_milliseconds")      Integer _userAccessRefreshTimeInMillis)
+                    @JsonProperty("user_access_refresh_time_in_milliseconds")      Integer _userAccessRefreshTimeInMillis,
+                    @JsonProperty("allow_overwrite_of_existing_files")             Boolean _allowOverwriteOfExistingFiles)
     {
         ConfigUtils.throwIfNull(_port, "port");
         ConfigUtils.throwIfNull(_iRODSMountPoint, "irods_mount_point");
@@ -33,6 +35,7 @@ public class NFSServerConfig
         userInfoRefreshTimeInMillis_ = _userInfoRefreshTimeInMillis;
         fileInfoRefreshTimeInMillis_ = _fileInfoRefreshTimeInMillis;
         userAccessRefreshTimeInMillis_ = _userAccessRefreshTimeInMillis;
+        allowOverwriteOfExistingFiles_ = ConfigUtils.withDefault(_allowOverwriteOfExistingFiles, true);
     }
     // @formatter:on
 
@@ -64,5 +67,11 @@ public class NFSServerConfig
     public int getUserAccessRefreshTimeInMilliseconds()
     {
         return userAccessRefreshTimeInMillis_;
+    }
+
+    @JsonIgnore
+    public boolean allowOverwriteOfExistingFiles()
+    {
+        return allowOverwriteOfExistingFiles_;
     }
 }

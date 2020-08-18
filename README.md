@@ -82,7 +82,12 @@ You'll need to set each option to match your iRODS environment. Each option is e
         "file_information_refresh_time_in_milliseconds": 1000
 
         // The refresh time for cached user access information.
-        "user_access_refresh_time_in_milliseconds": 1000
+        "user_access_refresh_time_in_milliseconds": 1000,
+
+        // Specifies whether the force flag should be applied when overwriting
+        // an existing file. If this option is false, an error will be reported
+        // back to the client.
+        "allow_overwrite_of_existing_files": true
     },
 
     // This section defines the location of the iRODS server being presented
