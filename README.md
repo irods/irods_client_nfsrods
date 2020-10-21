@@ -106,7 +106,7 @@ You'll need to set each option to match your iRODS environment. Each option is e
         // - CS_NEG_REQUIRE: Only use SSL/TLS.
         // - CS_NEG_DONT_CARE: Use SSL/TLS if the iRODS server is not set to CS_NEG_REFUSE.
         // - CS_NEG_REFUSE: Do NOT use SSL/TLS.
-        "ssl_negotiation_policy": "CS_NEG_DONT_CARE",
+        "ssl_negotiation_policy": "CS_NEG_REFUSE",
         
         // The total amount of time before an idle connection times out.
         // Defaults to 600 seconds.
