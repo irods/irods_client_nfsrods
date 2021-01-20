@@ -81,13 +81,30 @@ You'll need to set each option to match your iRODS environment. Each option is e
         // The refresh time for cached stat information.
         "file_information_refresh_time_in_milliseconds": 1000
 
-        // The refresh time for cached user access information.
+        // The refresh time for cached user access (NFS ACL) information.
         "user_access_refresh_time_in_milliseconds": 1000,
+        
+        // The refresh time for cached iRODS object type information.
+        "object_type_refresh_time_in_milliseconds": 300000,
+        
+        // The refresh time for cached iRODS user permissions information.
+        "user_permissions_refresh_time_in_milliseconds": 300000,
+
+        // The refresh time for cached iRODS user type information.
+        "user_type_refresh_time_in_milliseconds": 300000,
+
+        // The refresh time for cached GenQuery results used to produce the
+        // output of a list operation.
+        "list_operation_query_results_refresh_time_in_milliseconds": 30000,
 
         // Specifies whether the force flag should be applied when overwriting
         // an existing file. If this option is false, an error will be reported
         // back to the client.
-        "allow_overwrite_of_existing_files": true
+        "allow_overwrite_of_existing_files": true,
+
+        // Allows NFSRODS to make adjustments for running against an Oracle-backed
+        // iRODS deployment.
+        "using_oracle_database": false
     },
 
     // This section defines the location of the iRODS server being presented
@@ -285,3 +302,66 @@ $ docker run -it --name nfsrods \
              nfsrods
 ```
 This command will cause the log messages to appear in your terminal. If there are any errors during start-up, they will appear in the output. Missing configuration options will have a prefix of **Missing server configuration option**.
+
+### Q. NFSRODS performs a lot of stat operations. Is there any way to decrease the number of stats?
+Yes. There are a couple ways to improve performance. They are listed below:
+- Decrease the amount of logging. Try setting `logger.nfsrods.level` to `info` or higher.
+- Disable color output on `ls` output. Compare the timing of `/bin/ls` with `ls`.
+
+### Q. Listing large collections is extremely slow against an Oracle-backed iRODS zone. How do I fix this?
+It is likely that your iRODS zone does not contain the correct specific queries for an Oracle database.
+
+You'll need to verify that the SQL mapped to the following specific query names matches the SQL below.
+- ilsLACollections
+- ilsLADataObjects
+
+The following command can be used to display the current SQL mapped to a specific query.
+```bash
+$ iquest --sql ls | grep -A1 <specific_query_name>
+```
+
+#### SQL: ilsLACollections
+```sql
+SELECT * FROM (
+  SELECT c.parent_coll_name, c.coll_name, c.create_ts, c.modify_ts,
+         c.coll_id, c.coll_owner_name, c.coll_owner_zone, c.coll_type, u.user_name, u.zone_name,
+         a.access_type_id, u.user_id, rownum as limit_rn
+  FROM R_COLL_MAIN c
+  JOIN R_OBJT_ACCESS a ON c.coll_id = a.object_id
+  JOIN R_USER_MAIN u ON a.user_id = u.user_id
+  WHERE c.parent_coll_name = ?
+  ORDER BY c.coll_name, u.user_name, a.access_type_id, c.parent_coll_name, c.create_ts, c.modify_ts,
+           c.coll_id, c.coll_owner_name, c.coll_owner_zone, c.coll_type, u.zone_name, u.user_id DESC
+) WHERE limit_rn > ? AND limit_rn <= ?
+```
+
+#### SQL: ilsLADataObjects
+```sql
+SELECT * FROM (
+  SELECT s.coll_name, s.data_name, s.create_ts, s.modify_ts, s.data_id,
+         s.data_size, s.data_repl_num, s.data_owner_name, s.data_owner_zone, u.user_name,
+         u.user_id, a.access_type_id, u.user_type_name, u.zone_name, rownum as limit_rn
+  FROM (
+      SELECT c.coll_name, d.data_name, d.create_ts, d.modify_ts, d.data_id, d.data_repl_num,
+             d.data_size, d.data_owner_name, d.data_owner_zone
+      FROM R_COLL_MAIN c
+      JOIN R_DATA_MAIN d ON c.coll_id = d.coll_id
+      WHERE c.coll_name = ?
+  ) s
+  JOIN R_OBJT_ACCESS a ON s.data_id = a.object_id
+  JOIN R_USER_MAIN u ON a.user_id = u.user_id
+  ORDER BY s.coll_name, s.data_name, u.user_name, a.access_type_id, s.create_ts, s.modify_ts,
+           s.data_id, s.data_size, s.data_repl_num, s.data_owner_name, s.data_owner_zone,
+           u.user_id, u.user_type_name, u.zone_name DESC
+) WHERE limit_rn > ? and limit_rn <= ?
+```
+
+Replace (or add) the specific queries if they are incorrect. Use the following commands to add or remove a specific query.
+```bash
+$ iadmin asq <sql_query> <specific_query_name> # Adds a specific query.
+$ iadmin rsq <specific_query_name>             # Removes a specific query.
+```
+
+Once you have the specific queries in place, all that is left is to tell NFSRODS that the iRODS zone is backed by an Oracle database. To do this, set `using_oracle_database` to `true` in the NFSRODS configuration file.
+See the [section on configuring NFSRODS](#configuring) for the location of this option.
+

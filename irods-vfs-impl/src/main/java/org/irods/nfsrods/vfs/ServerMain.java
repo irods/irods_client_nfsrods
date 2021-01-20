@@ -23,6 +23,10 @@ import org.irods.jargon.core.connection.SettableJargonProperties;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
+import org.irods.jargon.pool.conncache.CachedIrodsProtocolManager;
+import org.irods.jargon.pool.conncache.JargonConnectionCache;
+import org.irods.jargon.pool.conncache.JargonKeyedPoolConfig;
+import org.irods.jargon.pool.conncache.JargonPooledObjectFactory;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.irods.nfsrods.utils.JSONUtils;
@@ -74,11 +78,13 @@ public class ServerMain
         }
 
         NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
-        IRODSFileSystem ifsys = IRODSFileSystem.instance();
+//        IRODSFileSystem ifsys = IRODSFileSystem.instance();
+        IRODSFileSystem ifsys = initFileSystemWithConnectionCaching(config);
         OncRpcSvc nfsSvc = null;
 
-        configureSslNegotiationPolicy(config, ifsys);
-        configureConnectionTimeout(config, ifsys);
+        configureJargonSslNegotiationPolicy(config, ifsys);
+        configureJargonConnectionTimeout(config, ifsys);
+//        configureJargonMaxQueryResults(ifsys);
 
         Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<>(ifsys, "Closing iRODS connections")));
 
@@ -146,8 +152,37 @@ public class ServerMain
         log_.info("Build Version => " + _props.getProperty("git.build.version"));
         log_.info("Build SHA     => " + _props.getProperty("git.commit.id.full"));
     }
+    
+    private static IRODSFileSystem initFileSystemWithConnectionCaching(ServerConfig _config) throws JargonException
+    {
+        IRODSFileSystem ifsys = IRODSFileSystem.instance();
 
-    private static void configureConnectionTimeout(ServerConfig _config, IRODSFileSystem _ifsys)
+        JargonKeyedPoolConfig poolConfig = new JargonKeyedPoolConfig();
+
+        JargonPooledObjectFactory poolFactory = new JargonPooledObjectFactory();
+        poolFactory.setIrodsSession(ifsys.getIrodsSession());
+        poolFactory.setIrodsSimpleProtocolManager(ifsys.getIrodsProtocolManager());
+
+        JargonConnectionCache connCache = new JargonConnectionCache(poolFactory, poolConfig);
+
+        CachedIrodsProtocolManager protocolMgr = new CachedIrodsProtocolManager();
+        protocolMgr.setJargonConnectionCache(connCache);
+
+        ifsys.getIrodsSession().setIrodsProtocolManager(protocolMgr);
+
+//        return IRODSFileSystem.instance(protocolMgr);
+        return ifsys;
+    }
+    
+    private static void configureJargonMaxQueryResults(IRODSFileSystem _ifsys)
+    {
+        IRODSSession session = _ifsys.getIrodsSession();
+        SettableJargonProperties props = new SettableJargonProperties(session.getJargonProperties());
+        props.setMaxFilesAndDirsQueryMax(Integer.MAX_VALUE);
+        session.setJargonProperties(props);
+    }
+
+    private static void configureJargonConnectionTimeout(ServerConfig _config, IRODSFileSystem _ifsys)
     {
         IRODSSession session = _ifsys.getIrodsSession();
         SettableJargonProperties props = new SettableJargonProperties(session.getJargonProperties());
@@ -155,7 +190,7 @@ public class ServerMain
         session.setJargonProperties(props);
     }
 
-    private static void configureSslNegotiationPolicy(ServerConfig _config, IRODSFileSystem _ifsys) throws JargonException
+    private static void configureJargonSslNegotiationPolicy(ServerConfig _config, IRODSFileSystem _ifsys) throws JargonException
     {
         String policy = _config.getIRODSClientConfig().getSslNegotiationPolicy();
         SslNegotiationPolicy sslNegPolicy = ClientServerNegotiationPolicy.findSslNegotiationPolicyFromString(policy);
