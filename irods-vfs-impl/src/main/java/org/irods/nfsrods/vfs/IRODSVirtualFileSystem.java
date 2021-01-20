@@ -32,6 +32,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessController;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -89,11 +90,11 @@ import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectType;
 import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
+import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
 
 public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
@@ -109,6 +110,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     private final IRODSAccount adminAcct_;
     private final ReadWriteAclWhitelist readWriteAclWhitelist_;
     private final boolean allowOverwriteOfExistingFiles_;
+    private final boolean usingOracleDB_;
 
     private final MutableConfiguration<String, Stat> statObjectCacheConfig_; // Key: <username>_<path>
     private final Cache<String, Stat> statObjectCache_;                      // Key: <username>_<path>
@@ -118,6 +120,15 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
     private final MutableConfiguration<String, ObjectType> objectTypeCacheConfig_; // Key: <path>
     private final Cache<String, ObjectType> objectTypeCache_;                      // Key: <path>
+    
+    private final MutableConfiguration<String, Object> permsCacheConfig_; // Key: <path>
+    private final Cache<String, Object> permsCache_;                      // Key: <path>
+    
+    private final MutableConfiguration<String, UserTypeEnum> userTypeCacheConfig_; // Key: <username>
+    private final Cache<String, UserTypeEnum> userTypeCache_;                      // Key: <username>
+    
+    private final MutableConfiguration<String, Object> listOpCacheConfig_; // Key: <username>#<collection>
+    private final Cache<String, Object> listOpCache_;                      // Key: <username>#<collection>
     
     // Special paths within iRODS.
     private final Path ROOT_COLLECTION;
@@ -157,38 +168,44 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         // @formatter:on
 
         readWriteAclWhitelist_ = new ReadWriteAclWhitelist(factory_, adminAcct_);
-        allowOverwriteOfExistingFiles_ = _config.getNfsServerConfig().allowOverwriteOfExistingFiles();
+        
+        NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
+        allowOverwriteOfExistingFiles_ = nfsSvrConfig.allowOverwriteOfExistingFiles();
+        usingOracleDB_ = nfsSvrConfig.isUsingOracleDatabase();
 
-        int time = _config.getNfsServerConfig().getFileInfoRefreshTimeInMilliseconds();
-
-        // @formatter:off
-        statObjectCacheConfig_ = new MutableConfiguration<String, Stat>()
-            .setTypes(String.class, Stat.class)
-            .setStoreByValue(false)
-            .setExpiryPolicyFactory(CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.MILLISECONDS, time)));
-        // @formatter:on
-
+        int expiryTime = nfsSvrConfig.getFileInfoRefreshTimeInMilliseconds();
+        statObjectCacheConfig_ = newCacheConfig(expiryTime, Stat.class);
         statObjectCache_ = _cacheManager.createCache("stat_info_cache", statObjectCacheConfig_);
 
-        time = _config.getNfsServerConfig().getUserAccessRefreshTimeInMilliseconds();
-
-        // @formatter:off
-        accessCacheConfig_ = new MutableConfiguration<String, Access>()
-            .setTypes(String.class, Access.class)
-            .setStoreByValue(false)
-            .setExpiryPolicyFactory(CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.MILLISECONDS, time)));
-        // @formatter:on
-
+        expiryTime = nfsSvrConfig.getUserAccessRefreshTimeInMilliseconds();
+        accessCacheConfig_ = newCacheConfig(expiryTime, Access.class);
         accessCache_ = _cacheManager.createCache("access_cache", accessCacheConfig_);
 
-        // @formatter:off
-        objectTypeCacheConfig_ = new MutableConfiguration<String, ObjectType>()
-            .setTypes(String.class, ObjectType.class)
-            .setStoreByValue(false)
-            .setExpiryPolicyFactory(CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.MILLISECONDS, 1000)));
-        // @formatter:on
-
+        expiryTime = nfsSvrConfig.getObjectTypeRefreshTimeInMilliseconds();
+        objectTypeCacheConfig_ = newCacheConfig(expiryTime, ObjectType.class);
         objectTypeCache_ = _cacheManager.createCache("object_type_cache", objectTypeCacheConfig_);
+
+        expiryTime = nfsSvrConfig.getUserPermissionsRefreshTimeInMilliseconds();
+        permsCacheConfig_ = newCacheConfig(expiryTime, Object.class);
+        permsCache_ = _cacheManager.createCache("perms_cache", permsCacheConfig_);
+
+        expiryTime = nfsSvrConfig.getUserTypeRefreshTimeInMilliseconds();
+        userTypeCacheConfig_ = newCacheConfig(expiryTime, UserTypeEnum.class);
+        userTypeCache_ = _cacheManager.createCache("user_type_cache", userTypeCacheConfig_);
+
+        expiryTime = nfsSvrConfig.getListOperationQueryResultsRefreshTimeInMilliseconds();
+        listOpCacheConfig_ = newCacheConfig(expiryTime, Object.class);
+        listOpCache_ = _cacheManager.createCache("list_op_cache", listOpCacheConfig_);
+    }
+    
+    private static <V> MutableConfiguration<String, V> newCacheConfig(int _expiryTimeInMillis, Class<V> _class)
+    {
+        // @formatter:off
+        return new MutableConfiguration<String, V>()
+            .setTypes(String.class, _class)
+            .setStoreByValue(false)
+            .setExpiryPolicyFactory(CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.MILLISECONDS, _expiryTimeInMillis)));
+        // @formatter:on
     }
 
     @Override
@@ -433,7 +450,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     private static boolean containsPermission(List<UserFilePermission> _perms, UserFilePermission _p)
     {
         // @formatter:off
-        return _perms.parallelStream().anyMatch(perm -> _p.getUserId().equals(perm.getUserId()) &&
+        return _perms.stream().anyMatch(perm -> _p.getUserId().equals(perm.getUserId()) &&
                                                         _p.getUserName().equals(perm.getUserName()) &&
                                                         _p.getUserZone().equals(perm.getUserZone()) &&
                                                         _p.getUserType() == perm.getUserType() &&
@@ -456,8 +473,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         log_.debug("diffAcl - current acl = {}", curAcl);
         log_.debug("diffAcl - new acl = {}", newAcl);
 
-        diff.added.addAll(newAcl.parallelStream().filter(p -> !containsPermission(curAcl, p)).collect(Collectors.toList()));
-        diff.removed.addAll(curAcl.parallelStream().filter(p -> !containsPermission(newAcl, p)).collect(Collectors.toList()));
+        diff.added.addAll(newAcl.stream().filter(p -> !containsPermission(curAcl, p)).collect(Collectors.toList()));
+        diff.removed.addAll(curAcl.stream().filter(p -> !containsPermission(newAcl, p)).collect(Collectors.toList()));
 
         log_.debug("diffAcl - (+) = {}", diff.added);
         log_.debug("diffAcl - (-) = {}", diff.removed);
@@ -726,7 +743,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                 log_.debug("checkAcl - No attribute/ACL operations requested.");
             }
 
-            Optional<UserFilePermission> perm = getHighestUserPermissionForPath(path, userName);
+            Optional<UserFilePermission> perm = getHighestUserPermissionForPath(userName, path);
             
             if (!perm.isPresent())
             {
@@ -834,7 +851,66 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     {
         throw new UnsupportedOperationException("Not supported");
     }
+    
+    private static final class CachedListingGenQueryResult
+    {
+        Date collectionLastModified;
+        List<CollectionAndDataObjectListingEntry> entries;
+    }
+    
+    private List<CollectionAndDataObjectListingEntry> listDataObjectsAndCollectionsUnderPathWithPermissions(IRODSAccount _acct,
+                                                                                                            String _path)
+        throws JargonException
+    {
+        final String cachedObjectKey = _acct.getUserName() + "#" + _path;
+        CachedListingGenQueryResult cachedResult = (CachedListingGenQueryResult ) listOpCache_.get(cachedObjectKey);
 
+        CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(_acct);
+        ObjStat objStat = lao.retrieveObjectStatForPath(_path);
+        
+        if (null != cachedResult)
+        {
+            // Return the cached results if the collection's contents has not changed
+            // since we last saw it.
+            if (objStat.getModifiedAt().equals(cachedResult.collectionLastModified))
+            {
+                return cachedResult.entries;
+            }
+            
+            cachedResult.entries.clear();
+        }
+        else
+        {
+            cachedResult = new CachedListingGenQueryResult();
+            cachedResult.entries = new ArrayList<>();
+        }
+
+        cachedResult.collectionLastModified = objStat.getModifiedAt();
+
+        List<CollectionAndDataObjectListingEntry> entries = cachedResult.entries;
+        int pagingIndex = 0;
+
+        do
+        {
+            entries.addAll(lao.listCollectionsUnderPathWithPermissions(_path, pagingIndex, usingOracleDB_));
+            pagingIndex = entries.size();
+        }
+        while (pagingIndex > 0 && !entries.get(pagingIndex - 1).isLastResult());
+
+        pagingIndex = 0;
+
+        do
+        {
+            entries.addAll(lao.listDataObjectsUnderPathWithPermissions(_path, pagingIndex, usingOracleDB_));
+            pagingIndex = entries.size();
+        }
+        while (pagingIndex > 0 && !entries.get(pagingIndex - 1).isLastResult());
+        
+        listOpCache_.put(cachedObjectKey, cachedResult);
+
+        return entries;
+    }
+    
     @Override
     public DirectoryStream list(Inode _inode, byte[] _verifier, long _cookie) throws IOException
     {
@@ -846,39 +922,50 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         try
         {
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
-            CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(acct);
+
+            // Get the list of groups the user is a member of.
+            UserGroupAO ugao = factory_.getUserGroupAO(adminAcct_);
+            List<UserGroup> groupsContainingUser = ugao.findUserGroupsForUser(acct.getUserName());
+        
             Path parentPath = getPath(toInodeNumber(_inode));
-            
             log_.debug("list - Listing contents of [{}] ...", parentPath);
 
-            String irodsAbsPath = parentPath.normalize().toString();
+            String irodsAbsPath = parentPath.toString();
 
-            List<CollectionAndDataObjectListingEntry> entries;
-            entries = lao.listDataObjectsAndCollectionsUnderPath(irodsAbsPath);
+            List<CollectionAndDataObjectListingEntry>
+                entries = listDataObjectsAndCollectionsUnderPathWithPermissions(acct, irodsAbsPath);
+            log_.debug("list - found {} entries.", entries.size());
+            
+            // 0, 1, and 2 are reserved cookie values.
+            long dirEntryCookie = Math.max(2, _cookie);
 
-            for (CollectionAndDataObjectListingEntry e : entries)
+            // "i" is used to index into the list of entries, therefore it must be greater
+            // than or equal to zero. The starting value of "i" is always "dirEntryCookie - 2"
+            // unless "_cookie" is zero.
+            for (long i = Math.max(0, dirEntryCookie - 2); i < entries.size(); ++i)
             {
-                Path path = parentPath.resolve(e.getPathOrName());
-
-                log_.debug("list - Entry = {}", path);
-
-                Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(path);
-
-                if (null == inodeNumber)
+                // If the "_cookie" value is less than "dirEntryCookie", that means the path needs
+                // to be added to the listing. Previously handled entries will have "dirEntryCookie"
+                // values that are less than or equal to "_cookie". The following if-statement protects
+                // the server from hitting the readdir/duplicate-cookie issue.
+                if (++dirEntryCookie > _cookie)
                 {
-                    inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
-                    inodeToPathMapper_.map(inodeNumber, path);
-                }
+                    CollectionAndDataObjectListingEntry e = entries.get((int) i);
 
-                // If the cookie value is less than the inode number of the current entry,
-                // then that means the path needs to be added to the listing. Previously handled
-                // entries will have inode numbers that are less than or equal to the current cookie value.
-                // The following if-statement protects the server from hitting the readdir/duplicate-cookie issue.
-                if (inodeNumber > _cookie)
-                {
-                    Stat stat = statPath(path, inodeNumber);
+                    Path path = parentPath.resolve(e.getPathOrName());
+                    log_.debug("list - Entry = {}", path);
+
+                    Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(path);
+
+                    if (null == inodeNumber)
+                    {
+                        inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
+                        inodeToPathMapper_.map(inodeNumber, path);
+                    }
+                    
+                    Stat stat = statPath(path, inodeNumber, e, groupsContainingUser);
                     Inode inode = toFh(inodeNumber);
-                    list.add(new DirectoryEntry(path.getFileName().toString(), inode, stat, inodeNumber));
+                    list.add(new DirectoryEntry(path.getFileName().toString(), inode, stat, dirEntryCookie));
                 }
             }
         }
@@ -892,7 +979,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             closeCurrentConnection();
         }
 
-        return new DirectoryStream(DirectoryStream.ZERO_VERIFIER, list);
+        // Uses the DirectoryStream.ZERO_VERIFIER. See READDIR operation of RFC 7530.
+        return new DirectoryStream(list);
     }
 
     @Override
@@ -1287,7 +1375,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             String userName = IRODSIdMapper.getNobodyUserName();
             String groupName = IRODSIdMapper.getNobodyGroupName();
             
-            if (getHighestUserPermissionForPath(path, acct.getUserName()).isPresent())
+            if (getHighestUserPermissionForPath(acct.getUserName(), path).isPresent())
             {
                 userName = acct.getUserName();
             }
@@ -1295,7 +1383,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             int userId = idMapper_.getUidByUserName(userName);
             int groupId = IRODSIdMapper.getNobodyGid();
 
-            setStatMode(path, stat, objStat, userName, acct.getUserName(), groupName);
+            setStatMode(path, stat, objStat, acct.getUserName(), groupName);
 
             stat.setUid(userId);
             stat.setGid(groupId);
@@ -1306,6 +1394,81 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             stat.setSize(objStat.getObjSize());
             stat.setFileid((int) _inodeNumber);
             stat.setGeneration(objStat.getModifiedAt().getTime());
+
+            log_.debug("statPath - User ID           = {}", userId);
+            log_.debug("statPath - Group ID          = {}", groupId);
+            log_.debug("statPath - Permissions       = {}", Stat.modeToString(stat.getMode()));
+            log_.debug("statPath - Stat              = {}", stat);
+
+            statObjectCache_.put(cachedStatKey, stat);
+
+            return stat;
+        }
+        catch (NumberFormatException | JargonException e)
+        {
+            log_.error(e.getMessage());
+            throw new IOException(e);
+        }
+    }
+
+    private Stat statPath(Path _path,
+                          long _inodeNumber,
+                          CollectionAndDataObjectListingEntry _entry,
+                          List<UserGroup> _groupsContainingUser)
+        throws IOException
+    {
+        log_.debug("statPath - _inodeNumber          = {}", _inodeNumber);
+        log_.debug("statPath - _path                 = {}", _path);
+        log_.debug("statPath - iRODS permissions     = {}", _entry.getUserFilePermission());
+
+        IRODSAccount acct = getCurrentIRODSUser().getAccount();
+        String path = _path.toString();
+
+        // Cached stat information must be scoped to the user due to the permissions
+        // possibly being changed depending on who is accessing the NFS server.
+        final String cachedStatKey = acct.getUserName() + "_" + path;
+        Stat stat = statObjectCache_.get(cachedStatKey);
+
+        if (null != stat)
+        {
+            log_.debug("statPath - Returning cached stat information for [{}] ...", path);
+            return stat;
+        }
+        
+        // Cache the permission information.
+        permsCache_.put(path, _entry.getUserFilePermission());
+
+        try
+        {
+            stat = new Stat();
+
+            setTime(stat, _entry);
+
+            log_.debug("statPath - Secret owner name = {}", _entry.getOwnerName());
+
+            String userName = IRODSIdMapper.getNobodyUserName();
+            Optional<UserFilePermission> highestPerm = getHighestUserPermissionForPath(acct.getUserName(),
+                                                                                       _entry.getUserFilePermission(),
+                                                                                       _groupsContainingUser);
+            if (highestPerm.isPresent())
+            {
+                userName = acct.getUserName();
+            }
+
+            int userId = idMapper_.getUidByUserName(userName);
+            int groupId = IRODSIdMapper.getNobodyGid();
+            
+            setStatMode(stat, _entry, _groupsContainingUser, acct.getUserName());
+
+            stat.setUid(userId);
+            stat.setGid(groupId);
+            stat.setNlink(1);
+            stat.setDev(17);
+            stat.setIno((int) _inodeNumber);
+            stat.setRdev(0);
+            stat.setSize(_entry.getDataSize());
+            stat.setFileid((int) _inodeNumber);
+            stat.setGeneration(_entry.getModifiedAt().getTime());
 
             log_.debug("statPath - User ID           = {}", userId);
             log_.debug("statPath - Group ID          = {}", groupId);
@@ -1336,6 +1499,22 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             _stat.setATime(_objStat.getModifiedAt().getTime());
             _stat.setCTime(_objStat.getCreatedAt().getTime());
             _stat.setMTime(_objStat.getModifiedAt().getTime());
+        }
+    }
+    
+    private void setTime(Stat _stat, CollectionAndDataObjectListingEntry _entry)
+    {
+        if (_entry.getObjectType() == ObjectType.COLLECTION_HEURISTIC_STANDIN)
+        {
+            _stat.setATime(FIXED_TIMESTAMP);
+            _stat.setCTime(FIXED_TIMESTAMP);
+            _stat.setMTime(FIXED_TIMESTAMP);
+        }
+        else
+        {
+            _stat.setATime(_entry.getModifiedAt().getTime());
+            _stat.setCTime(_entry.getCreatedAt().getTime());
+            _stat.setMTime(_entry.getModifiedAt().getTime());
         }
     }
 
@@ -1383,31 +1562,45 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         paths.add(PUBLIC_COLLECTION);
         paths.add(TRASH_COLLECTION);
 
-        return paths.parallelStream().anyMatch(p -> p.toString().equals(_path));
+        return paths.stream().anyMatch(p -> p.toString().equals(_path));
     }
 
+    @SuppressWarnings("unchecked")
     private List<UserFilePermission> getPermissions(String _path) throws JargonException
     {
-        List<UserFilePermission> perms = new ArrayList<>();
+        List<UserFilePermission> perms = (List<UserFilePermission>) permsCache_.get(_path);
+
+        if (perms != null)
+        {
+            log_.debug("getPermissions - Returning cached permissions for [{}] [perms={}] ...", _path, perms);
+            return perms;
+        }
 
         switch (getObjectType(_path))
         {
             case COLLECTION:
                 CollectionAO coa = factory_.getCollectionAO(adminAcct_);
-                return coa.listPermissionsForCollection(_path);
+                perms = coa.listPermissionsForCollection(_path);
+                break;
 
             case DATA_OBJECT:
                 DataObjectAO doa = factory_.getDataObjectAO(adminAcct_);
-                return doa.listPermissionsForDataObject(_path);
+                perms = doa.listPermissionsForDataObject(_path);
+                break;
 
             default:
+                perms = new ArrayList<>();
                 break;
         }
+        
+        permsCache_.put(_path, perms);
+
+        log_.debug("getPermissions - Returning permissions for [{}] [perms={}] ...", _path, perms);
 
         return perms;
     }
 
-    private void setStatMode(String _path, Stat _stat, ObjStat _objStat, String _ownerName, String _userName, String _groupName)
+    private void setStatMode(String _path, Stat _stat, ObjStat _objStat, String _userName, String _groupName)
         throws JargonException
     {
         log_.debug("setStatMode - _path = {}", _path);
@@ -1448,44 +1641,81 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                 break;
         }
     }
-
-    private Optional<UserFilePermission> getHighestUserPermissionForPath(String _path, String _userName)
+    
+    private void setStatMode(Stat _stat,
+                             CollectionAndDataObjectListingEntry _entry,
+                             List<UserGroup> _groupsContainingUser,
+                             String _userName)
         throws JargonException
     {
-        return getHighestUserPermissionForPath(getPermissions(_path), _userName);
+        switch (_entry.getObjectType())
+        {
+            case COLLECTION:
+            {
+                if (isSpecialCollection(_entry.getPathOrName()))
+                {
+                    _stat.setMode(Stat.S_IFDIR | 0700);
+                }
+
+                int mode = calcMode(_userName, _entry.getObjectType(), _entry.getUserFilePermission(), _groupsContainingUser);
+                _stat.setMode(Stat.S_IFDIR | mode);
+                break;
+            }
+
+            case DATA_OBJECT:
+            {
+                int mode = calcMode(_userName, _entry.getObjectType(), _entry.getUserFilePermission(), _groupsContainingUser);
+                _stat.setMode(Stat.S_IFREG | (~0110 & mode));
+                break;
+            }
+
+            // This object type comes from the Jargon library.
+            // It is encountered when the user accessing iRODS is not a rodsadmin.
+            case COLLECTION_HEURISTIC_STANDIN:
+                _stat.setMode(Stat.S_IFDIR);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    private Optional<UserFilePermission> getHighestUserPermissionForPath(String _userName, String _path)
+        throws JargonException
+    {
+        return getHighestUserPermissionForPath(_userName, getPermissions(_path));
     }
     
-    private Optional<UserFilePermission> getHighestUserPermissionForPath(List<UserFilePermission> _perms,
-                                                                         String _userName)
+    private Optional<UserFilePermission> getHighestUserPermissionForPath(String _userName, List<UserFilePermission> _perms)
         throws JargonException
     {
-        // Get the list of groups containing the user.
         UserGroupAO ugao = factory_.getUserGroupAO(adminAcct_);
-        List<UserGroup> groupsContainingUser = ugao.findUserGroupsForUser(_userName);
-        
+        return getHighestUserPermissionForPath(_userName, _perms, ugao.findUserGroupsForUser(_userName));
+    }
+    
+    private Optional<UserFilePermission> getHighestUserPermissionForPath(String _userName,
+                                                                         List<UserFilePermission> _perms,
+                                                                         List<UserGroup> _groupsContainingUser)
+        throws JargonException
+    {
         // @formatter:off
         // Get the highest level of permissions for the user among the groups.
-        Optional<UserFilePermission> highestGroupPerm = _perms.parallelStream()
-            // Filter the incoming list "_perms" to groups the user is a part of.
-            .filter(p -> p.getUserType() == UserTypeEnum.RODS_GROUP &&
-                         groupsContainingUser.parallelStream()
-                             .anyMatch(ug -> p.getUserName().equals(ug.getUserGroupName())))
+        Optional<UserFilePermission> highestGroupPerm = _perms.stream()
+            // Filter the incoming list "_perms" to groups the user is a member of.
+            .filter(p -> _groupsContainingUser.stream().anyMatch(ug -> p.getUserName().equals(ug.getUserGroupName())))
             // Return the object holding the highest level of permissions.
             .max((lhs, rhs) -> Integer.compare(lhs.getFilePermissionEnum().ordinal(),
                                                rhs.getFilePermissionEnum().ordinal()));
-        
-        List<UserTypeEnum> userTypes = Lists.newArrayList(UserTypeEnum.RODS_ADMIN, UserTypeEnum.RODS_USER, UserTypeEnum.GROUP_ADMIN);
 
         // Get the permissions for the user if they have explicit permission
         // to the object.
-        List<UserFilePermission> perms = _perms.parallelStream()
-            .filter(p -> userTypes.contains(p.getUserType()))
+        List<UserFilePermission> perms = _perms.stream()
             .filter(p -> p.getUserName().equals(_userName))
             .collect(Collectors.toList());
         
         highestGroupPerm.ifPresent(p -> perms.add(p));
         
-        return perms.parallelStream()
+        return perms.stream()
             .max((lhs, rhs) -> Integer.compare(lhs.getFilePermissionEnum().ordinal(),
                                                rhs.getFilePermissionEnum().ordinal()));
         // @formatter:on
@@ -1504,7 +1734,45 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             mode = 0;
         }
         
-        Optional<UserFilePermission> perm = getHighestUserPermissionForPath(_perms, _userName);
+        Optional<UserFilePermission> perm = getHighestUserPermissionForPath(_userName, _perms);
+        
+        if (perm.isPresent())
+        {
+            UserFilePermission p = perm.get();
+
+            log_.debug("calcMode - permission = {}", p);
+            
+            final int r = 0400; // Read bit
+            final int w = 0200; // Write bit
+
+            switch (p.getFilePermissionEnum())
+            {
+                // @formatter:off
+                case OWN:   mode |= (r | w); break;
+                case WRITE: mode |= (r | w); break;
+                case READ:  mode |= r; break;
+                default:
+                // @formatter:on
+            }
+        }
+
+        return mode;
+    }
+
+    private int calcMode(String _userName,
+                         ObjectType _objType,
+                         List<UserFilePermission> _perms,
+                         List<UserGroup> _groupsContainingUser)
+        throws JargonException
+    {
+        int mode = 0100;
+
+        if (ObjectType.DATA_OBJECT == _objType)
+        {
+            mode = 0;
+        }
+        
+        Optional<UserFilePermission> perm = getHighestUserPermissionForPath(_userName, _perms, _groupsContainingUser);
         
         if (perm.isPresent())
         {
@@ -1543,6 +1811,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
     private boolean isAdministrator(String _userName) throws JargonException
     {
+        UserTypeEnum type = userTypeCache_.get(_userName);
+        
+        if (null != type)
+        {
+            return UserTypeEnum.RODS_ADMIN == type;
+        }
+
         UserAO uao = factory_.getUserAO(adminAcct_);
         User user = uao.findByName(_userName);
         
@@ -1550,6 +1825,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         {
             return false;
         }
+        
+        userTypeCache_.put(_userName, user.getUserType());
 
         return user.getUserType() == UserTypeEnum.RODS_ADMIN;
     }

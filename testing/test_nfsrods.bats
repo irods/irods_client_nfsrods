@@ -41,3 +41,18 @@
     run rm -rf ${SANDBOX}
     [ $status -eq 0 ]
 }
+
+@test "listing directory with large number of entries prints all entries" {
+    SANDBOX='large_directory_sandbox'
+
+    mkdir -p ${SANDBOX}
+
+    run parallel touch ::: ${SANDBOX}/foo{0001..3000}
+
+    result="$(ls ${SANDBOX} | wc -l)"
+    [ "$result" -eq 3000 ]
+
+    run parallel rm ::: ${SANDBOX}/foo{0001..3000}
+    rm -rf ${SANDBOX}
+}
+

@@ -4,7 +4,13 @@
         "irods_mount_point": "/tempZone",
         "user_information_refresh_time_in_milliseconds": 3600000,
         "file_information_refresh_time_in_milliseconds": 1000,
-        "user_access_refresh_time_in_milliseconds": 1000
+        "user_access_refresh_time_in_milliseconds": 1000,
+        "object_type_refresh_time_in_milliseconds": 300000,
+        "user_permissions_refresh_time_in_milliseconds": 300000,
+        "user_type_refresh_time_in_milliseconds": 300000,
+        "list_operation_query_results_refresh_time_in_milliseconds": 30000,
+        "allow_overwrite_of_existing_files": true,
+        "using_oracle_database": false
     },
 
     "irods_client": {
