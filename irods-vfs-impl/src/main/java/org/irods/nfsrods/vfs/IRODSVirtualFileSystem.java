@@ -860,16 +860,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             {
                 Path path = parentPath.resolve(e.getPathOrName());
 
-                try
-                {
-                    lao.retrieveObjectStatForPath(path.toString());
-                }
-                catch (JargonException ex)
-                {
-                    log_.debug("list - [{}] does not have permission to stat [{}]. Skipping ...", acct.getUserName(), path);
-                    continue;
-                }
-
                 log_.debug("list - Entry = {}", path);
 
                 Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(path);
