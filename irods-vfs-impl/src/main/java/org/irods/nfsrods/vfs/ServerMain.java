@@ -10,8 +10,9 @@ import javax.cache.spi.CachingProvider;
 
 import org.apache.logging.log4j.core.config.Configurator;
 import org.dcache.nfs.ExportFile;
-import org.dcache.nfs.v4.MDSOperationFactory;
+import org.dcache.nfs.v4.MDSOperationExecutor;
 import org.dcache.nfs.v4.NFSServerV41;
+import org.dcache.nfs.v4.xdr.nfs4_prot;
 import org.dcache.nfs.vfs.VirtualFileSystem;
 import org.dcache.oncrpc4j.rpc.OncRpcProgram;
 import org.dcache.oncrpc4j.rpc.OncRpcSvc;
@@ -111,13 +112,13 @@ public class ServerMain
 
             // @formatter:off
             NFSServerV41 nfs4 = new NFSServerV41.Builder()
-                .withExportFile(exportFile)
+                .withExportTable(exportFile)
                 .withVfs(vfs)
-                .withOperationFactory(new MDSOperationFactory())
+                .withOperationExecutor(new MDSOperationExecutor())
                 .build();
             // @formatter:on
 
-            nfsSvc.register(new OncRpcProgram(100003, 4), nfs4);
+            nfsSvc.register(new OncRpcProgram(nfs4_prot.NFS4_PROGRAM, nfs4_prot.NFS_V4), nfs4);
 
             nfsSvc.start();
 
