@@ -54,6 +54,12 @@
 			<url>https://download.dcache.org/nexus/content/repositories/releases</url>
 			<layout>default</layout>
 		</repository>
+                <repository>
+                        <id>oracleReleases</id>
+                        <name>Oracle Released Java Packages</name>
+                        <url>https://download.oracle.com/maven</url>
+                        <layout>default</layout>
+                </repository>
 	</repositories>
 	<developers>
 		<developer>
