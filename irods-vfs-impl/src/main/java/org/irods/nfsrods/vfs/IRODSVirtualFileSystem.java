@@ -32,7 +32,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessController;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -75,6 +77,8 @@ import org.irods.jargon.core.pub.CollectionAndDataObjectListAndSearchAO;
 import org.irods.jargon.core.pub.DataObjectAO;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystemAO;
+import org.irods.jargon.core.pub.IRODSGenQueryExecutor;
+import org.irods.jargon.core.pub.RuleProcessingAO;
 import org.irods.jargon.core.pub.UserAO;
 import org.irods.jargon.core.pub.UserGroupAO;
 import org.irods.jargon.core.pub.domain.ObjStat;
@@ -85,11 +89,20 @@ import org.irods.jargon.core.pub.io.FileIOOperations;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileFactory;
 import org.irods.jargon.core.pub.io.IRODSRandomAccessFile;
+import org.irods.jargon.core.query.AbstractIRODSGenQuery.RowCountOptions;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectType;
+import org.irods.jargon.core.query.IRODSGenQuery;
+import org.irods.jargon.core.query.IRODSQueryResultRow;
+import org.irods.jargon.core.query.IRODSQueryResultSet;
+import org.irods.jargon.core.query.JargonQueryException;
+import org.irods.jargon.core.rule.IRODSRuleExecResult;
+import org.irods.jargon.core.rule.IrodsRuleInvocationTypeEnum;
+import org.irods.jargon.core.rule.RuleInvocationConfiguration;
 import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.ServerConfig;
+import org.irods.nfsrods.utils.JSONUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,6 +116,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     private static final long FIXED_TIMESTAMP = System.currentTimeMillis();
     private static final FsStat FILE_SYSTEM_STAT_INFO = new FsStat(0, 0, 0, 0);
 
+    private final IRODSClientConfig irodsSvrConfig_;
     private final IRODSAccessObjectFactory factory_;
     private final IRODSIdMapper idMapper_;
     private final InodeToPathMapper inodeToPathMapper_;
@@ -132,28 +146,27 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                                   CacheManager _cacheManager)
         throws DataNotFoundException, JargonException
     {
+        irodsSvrConfig_ = _config.getIRODSClientConfig();
         factory_ = _factory;
         idMapper_ = _idMapper;
         inodeToPathMapper_ = new InodeToPathMapper(_config, _factory);
 
-        IRODSClientConfig rodsSvrConfig = _config.getIRODSClientConfig();
-
         ROOT_COLLECTION = Paths.get("/");
-        ZONE_COLLECTION = ROOT_COLLECTION.resolve(rodsSvrConfig.getZone());
+        ZONE_COLLECTION = ROOT_COLLECTION.resolve(irodsSvrConfig_.getZone());
         HOME_COLLECTION = ZONE_COLLECTION.resolve("home");
         PUBLIC_COLLECTION = ZONE_COLLECTION.resolve("public");
         TRASH_COLLECTION = ZONE_COLLECTION.resolve("trash");
 
-        IRODSProxyAdminAccountConfig proxyConfig = rodsSvrConfig.getIRODSProxyAdminAcctConfig();
-        Path proxyUserHomeCollection = Paths.get("/", rodsSvrConfig.getZone(), "home", proxyConfig.getUsername());
+        IRODSProxyAdminAccountConfig proxyConfig = irodsSvrConfig_.getIRODSProxyAdminAcctConfig();
+        Path proxyUserHomeCollection = Paths.get("/", irodsSvrConfig_.getZone(), "home", proxyConfig.getUsername());
         // @formatter:off
-        adminAcct_ = IRODSAccount.instance(rodsSvrConfig.getHost(),
-                                           rodsSvrConfig.getPort(),
+        adminAcct_ = IRODSAccount.instance(irodsSvrConfig_.getHost(),
+                                           irodsSvrConfig_.getPort(),
                                            proxyConfig.getUsername(),
                                            proxyConfig.getPassword(),
                                            proxyUserHomeCollection.toString(),
-                                           rodsSvrConfig.getZone(),
-                                           rodsSvrConfig.getDefaultResource());
+                                           irodsSvrConfig_.getZone(),
+                                           irodsSvrConfig_.getDefaultResource());
         // @formatter:on
 
         readWriteAclWhitelist_ = new ReadWriteAclWhitelist(factory_, adminAcct_);
@@ -644,7 +657,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         }
 
         String path = getPath(toInodeNumber(_inode)).toString();
-        
+
         // Key   (String) => <user_id>#<access_mask>#<path>
         // Value (Access) => ALLOW/DENY
         // Cached stat information must be scoped to the user due to the permissions
@@ -832,7 +845,64 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     @Override
     public Inode link(Inode _parent, Inode _existing, String _target, Subject _subject) throws IOException
     {
-        throw new UnsupportedOperationException("Not supported");
+        log_.debug("vfs::link");
+
+        Path linkParentPath = getPath(toInodeNumber(_parent));
+        Path linkTargetPath = getPath(toInodeNumber(_existing));
+        Path linkNamePath = linkParentPath.resolve(_target);
+
+        log_.debug("list - _parent   = {}", linkParentPath);            // The parent directory of _target.
+        log_.debug("list - _existing = {}", linkTargetPath);            // The file or directory to link to.
+        log_.debug("list - _target   = {}", _target);                   // The filename or absolute path of the link.
+        log_.debug("list - _subject  = {}", Subjects.getUid(_subject)); // The UID of the user who executed this command.
+        
+        // _parent + _target => the absolute path of the hard link.
+        
+        try
+        {
+            IRODSAccount acct = getCurrentIRODSUser().getAccount();
+            Optional<String> replicaNumber = getReplicaNumberOfLatestGoodReplica(acct, linkTargetPath);
+            
+            if (!replicaNumber.isPresent())
+            {
+                throw new NoEntException(String.format("No good replica to link for [%s]", linkTargetPath));
+            }
+
+            Map<String, String> jsonInput = new HashMap<>();
+            jsonInput.put("operation", "hard_link_create");
+            jsonInput.put("logical_path", linkTargetPath.toString());
+            jsonInput.put("replica_number", replicaNumber.get());
+            jsonInput.put("link_name", linkNamePath.toString());
+        
+            RuleProcessingAO rpao = factory_.getRuleProcessingAO(acct);
+            RuleInvocationConfiguration ctx = new RuleInvocationConfiguration();
+            ctx.setIrodsRuleInvocationTypeEnum(IrodsRuleInvocationTypeEnum.OTHER);
+            ctx.setRuleEngineSpecifier(irodsSvrConfig_.getHardLinksRuleEnginePluginInstanceName());
+
+            StringBuilder sb = new StringBuilder(JSONUtils.toJSON(jsonInput));
+            sb.append("\nINPUT null\nOUTPUT ruleExecOut\n");
+
+            IRODSRuleExecResult result = rpao.executeRule(sb.toString(), null, ctx);
+            
+            if (!result.getRuleExecOut().isEmpty() || !result.getRuleExecErr().isEmpty())
+            {
+                throw new IOException("Unexpected output on creation of hard link");
+            }
+            
+            long newInodeNumber = inodeToPathMapper_.getAndIncrementFileID();
+            inodeToPathMapper_.map(newInodeNumber, linkNamePath);
+
+            return toFh(newInodeNumber);
+        }
+        catch (JargonException | JargonQueryException e)
+        {
+            log_.error(e.getMessage());
+            throw new IOException(e);
+        }
+        finally
+        {
+            closeCurrentConnection();
+        }
     }
 
     @Override
@@ -1126,6 +1196,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     @Override
     public String readlink(Inode _inode) throws IOException
     {
+        log_.debug("vfs::readlink");
         throw new UnsupportedOperationException("Not supported");
     }
 
@@ -1299,7 +1370,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             stat.setUid(userId);
             stat.setGid(groupId);
-            stat.setNlink(1);
+            stat.setNlink(1); // TODO: Should hard links affect this number?
             stat.setDev(17);
             stat.setIno((int) _inodeNumber);
             stat.setRdev(0);
@@ -1552,6 +1623,33 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         }
 
         return user.getUserType() == UserTypeEnum.RODS_ADMIN;
+    }
+    
+    private Optional<String> getReplicaNumberOfLatestGoodReplica(IRODSAccount _acct, Path _logicalPath)
+        throws JargonException, JargonQueryException
+    {
+        // @formatter:off
+        String gql = String.format("select max(DATA_MODIFY_TIME) " +
+                                   "where " +
+                                   " COLL_NAME = '%s' and" +
+                                   " DATA_NAME = '%s' and" +
+                                   " DATA_REPL_STATUS = '1'",
+                                   _logicalPath.getParent(),
+                                   _logicalPath.getFileName());
+        // @formatter:on
+        final int rowsDesired = 1;
+        IRODSGenQuery genQuery = IRODSGenQuery.instance(gql, rowsDesired, RowCountOptions.ROW_COUNT_FOR_THIS_RESULT);
+        IRODSGenQueryExecutor executor = factory_.getIRODSGenQueryExecutor(_acct);
+
+        final int partialStartIndex = 0;
+        IRODSQueryResultSet resultSet = executor.executeIRODSQueryAndCloseResult(genQuery, partialStartIndex);
+
+        for (IRODSQueryResultRow row : resultSet.getResults())
+        {
+            return Optional.of(row.getColumn(0));
+        }
+
+        return Optional.empty();
     }
 
     private void closeCurrentConnection() throws IOException
