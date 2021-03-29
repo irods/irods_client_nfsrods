@@ -70,24 +70,20 @@ public class ServerMain
         try
         {
             config = JSONUtils.fromJSON(new File(SERVER_CONFIG_PATH), ServerConfig.class);
-            log_.debug("main - Server config ==> {}", JSONUtils.toJSON(config));
+            log_.info("main - Server config ==> {}", JSONUtils.toJSON(config));
         }
         catch (IOException e)
         {
             log_.error("main - Error reading server config." + System.lineSeparator() + e.getMessage());
             System.exit(1);
         }
-
+        
         NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
-//        IRODSFileSystem ifsys = IRODSFileSystem.instance();
-        IRODSFileSystem ifsys = initFileSystemWithConnectionCaching(config);
+        IRODSFileSystem ifsys = initIRODSFileSystemWithConnectionCaching(config);
         OncRpcSvc nfsSvc = null;
 
         configureJargonSslNegotiationPolicy(config, ifsys);
         configureJargonConnectionTimeout(config, ifsys);
-//        configureJargonMaxQueryResults(ifsys);
-
-        Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<>(ifsys, "Closing iRODS connections")));
 
         try (CachingProvider cachingProvider = Caching.getCachingProvider();
              CacheManager cacheManager = cachingProvider.getCacheManager();)
@@ -103,8 +99,6 @@ public class ServerMain
                 .withWorkerThreadIoStrategy()
                 .withSubjectPropagation()
                 .build();
-
-            Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHandler<>(nfsSvc, "Shutting down NFS services")));
             // @formatter:on
 
             ExportFile exportFile = new ExportFile(new File(EXPORTS_CONFIG_PATH));
@@ -122,11 +116,18 @@ public class ServerMain
 
             nfsSvc.start();
 
-            log_.info("main - Press [ctrl-c] to shutdown.");
+            log_.info("main - Press any key to shutdown.");
 
-            Thread.currentThread().join();
+            System.in.read();
+            
+            log_.info("main - Shutting down ...");
+            
+            close(nfsSvc);
+            close(ifsys);
+
+            log_.info("main - done.");
         }
-        catch (JargonException | IOException | InterruptedException e)
+        catch (JargonException | IOException e)
         {
             log_.error(e.getMessage());
             System.exit(1);
@@ -149,12 +150,12 @@ public class ServerMain
     
     private static void logSHA(Properties _props)
     {
-        log_.info("Build Time    => " + _props.getProperty("git.build.time"));
-        log_.info("Build Version => " + _props.getProperty("git.build.version"));
-        log_.info("Build SHA     => " + _props.getProperty("git.commit.id.full"));
+        log_.info("Build Time    => {}", _props.getProperty("git.build.time"));
+        log_.info("Build Version => {}", _props.getProperty("git.build.version"));
+        log_.info("Build SHA     => {}", _props.getProperty("git.commit.id.full"));
     }
     
-    private static IRODSFileSystem initFileSystemWithConnectionCaching(ServerConfig _config) throws JargonException
+    private static IRODSFileSystem initIRODSFileSystemWithConnectionCaching(ServerConfig _config) throws JargonException
     {
         IRODSFileSystem ifsys = IRODSFileSystem.instance();
 
@@ -171,18 +172,9 @@ public class ServerMain
 
         ifsys.getIrodsSession().setIrodsProtocolManager(protocolMgr);
 
-//        return IRODSFileSystem.instance(protocolMgr);
         return ifsys;
     }
     
-    private static void configureJargonMaxQueryResults(IRODSFileSystem _ifsys)
-    {
-        IRODSSession session = _ifsys.getIrodsSession();
-        SettableJargonProperties props = new SettableJargonProperties(session.getJargonProperties());
-        props.setMaxFilesAndDirsQueryMax(Integer.MAX_VALUE);
-        session.setJargonProperties(props);
-    }
-
     private static void configureJargonConnectionTimeout(ServerConfig _config, IRODSFileSystem _ifsys)
     {
         IRODSSession session = _ifsys.getIrodsSession();
@@ -212,36 +204,22 @@ public class ServerMain
 
         try
         {
-            // @formatter:off
-            if      (_obj instanceof OncRpcSvc)       { ((OncRpcSvc) _obj).stop(); }
-            else if (_obj instanceof IRODSFileSystem) { ((IRODSFileSystem) _obj).closeAndEatExceptions(); }
-            // @formatter:on
+            if (_obj instanceof OncRpcSvc)
+            {
+                ((OncRpcSvc) _obj).stop();
+            }
+            else if (_obj instanceof IRODSFileSystem)
+            {
+                IRODSFileSystem fsys = (IRODSFileSystem) _obj;
+                IRODSSession session = fsys.getIrodsSession();
+                CachedIrodsProtocolManager pmgr = (CachedIrodsProtocolManager) session.getIrodsProtocolManager();
+                pmgr.getJargonConnectionCache().close();
+                fsys.closeAndEatExceptions();
+            }
         }
         catch (Exception e)
         {
             log_.error(e.getMessage());
-        }
-    }
-
-    private static final class ShutdownHandler<T> implements Runnable
-    {
-        private T object_;
-        private String msg_;
-
-        ShutdownHandler(T _object, String _msg)
-        {
-            object_ = _object;
-            msg_ = _msg;
-        }
-
-        @Override
-        public void run()
-        {
-            log_.info("main - {} ...", msg_);
-
-            close(object_);
-
-            log_.info("main - {} ... done.", msg_);
         }
     }
 }
