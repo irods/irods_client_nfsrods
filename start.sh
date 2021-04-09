@@ -13,4 +13,6 @@ else
    echo "Cert not found for NFSRODS - not importing"
 fi
 
+service rpcbind start
+
 java -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -jar /irods_client_nfsrods/irods-vfs-impl/target/nfsrods-1.0.1-jar-with-dependencies.jar "$@"

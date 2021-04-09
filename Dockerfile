@@ -4,7 +4,7 @@ ARG sssd=false
 RUN apt-get update && \
     apt-get install -y apt-transport-https && \
     apt-get install -y maven git openjdk-8-jdk && \
-    apt-get install -y libnss-sss
+    apt-get install -y libnss-sss rpcbind
 
 ARG _github_account="irods"
 ARG _sha="master"
