@@ -27,8 +27,7 @@ A standalone NFSv4.1 server (via [nfs4j](https://github.com/dCache/nfs4j)) with 
 - Supports many common *nix commands and software (e.g. mkdir, cat, etc.)
 
 ## Requirements
-- iRODS v4.2.6+
-- [iRODS REP for Collection Mtime](https://github.com/irods/irods_rule_engine_plugin_update_collection_mtime)
+- iRODS v4.2.9+
 - Docker (as of this writing, v18.09.0)
 - OS NFS packages (e.g. Ubuntu 16.04: nfs-common)
 
