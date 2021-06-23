@@ -1301,6 +1301,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             log_.debug("write - _count       = {}", _count);
 
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
+
+            // NFS will attempt to write large files in parallel by calling
+            // the write operation from multiple threads. This will result in
+            // an error if old stat information is used across multiple writes.
+            // We remove any cached stat object for the path to avoid this.
+            statObjectCache_.remove(acct.getUserName() + "_" + path);
+
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
             IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString(), OpenFlags.READ_WRITE);
 
