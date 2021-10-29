@@ -1309,7 +1309,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             statObjectCache_.remove(acct.getUserName() + "_" + path);
 
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
-            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString(), OpenFlags.READ_WRITE);
+
+            final boolean coordinated = true;
+            IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString(), OpenFlags.READ_WRITE, coordinated);
 
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
