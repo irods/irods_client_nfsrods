@@ -9,13 +9,13 @@
 	<parent>
 		<groupId>org.irods</groupId>
 		<artifactId>jargon-pom</artifactId>
-		<version>4.3.2.2-RELEASE</version>
+		<version>4.3.2.3-SNAPSHOT</version>
 	</parent>
 	<packaging>pom</packaging>
 	<name>nfs4j-irodsvfs</name>
 	<description>iRODS NFS4J Virtual File System</description>
 	<properties>
-		<jargon.version>4.3.2.2-RELEASE</jargon.version>
+		<jargon.version>4.3.2.3-SNAPSHOT</jargon.version>
 	</properties>
 	<organization>
 		<name>iRODS Consortium</name>
