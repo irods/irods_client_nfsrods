@@ -23,7 +23,7 @@ public class ServerConfig
         iRODSClientConfig_ = _iRODSClientConfig;
     }
     // @formatter:on
-
+    
     @JsonIgnore
     public NFSServerConfig getNfsServerConfig()
     {

@@ -66,7 +66,7 @@ public class ServerMain
         }
 
         ServerConfig config = null;
-
+        
         try
         {
             config = JSONUtils.fromJSON(new File(SERVER_CONFIG_PATH), ServerConfig.class);

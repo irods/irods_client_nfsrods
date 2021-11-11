@@ -43,7 +43,7 @@ public class IRODSClientConfig
         setConnectionTimeout(_connTimeout);
     }
     // @formatter:on
-
+    
     @JsonIgnore
     public String getHost()
     {
