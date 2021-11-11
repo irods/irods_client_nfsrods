@@ -23,7 +23,7 @@ public class IRODSProxyAdminAccountConfig
         password_ = _password;
     }
     // @formatter:on
-
+    
     @JsonIgnore
     public String getUsername()
     {
