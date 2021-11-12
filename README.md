@@ -143,7 +143,7 @@ You'll need to set each option to match your iRODS environment. Each option is e
 ### Running
 After updating the config file, you should be able to run the server using the following commands:
 ```bash
-$ docker run -di --name nfsrods \
+$ docker run -d --name nfsrods \
              -p <public_port>:2049 \
              -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
              -v </full/path/to/etc/passwd/formatted/file>:/etc/passwd:ro \
@@ -186,7 +186,7 @@ supports `libnss-sss`. It can be used by configuring sssd on the container
 host and binding the sssd socket into the container.
 
 ```bash
-$ docker run -di --name nfsrods \
+$ docker run -d --name nfsrods \
              -p <public_port>:2049 \
              -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
              -v /var/lib/sss:/var/lib/sss \
