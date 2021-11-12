@@ -1,0 +1,14 @@
+version: "3.7"
+
+services:
+    nfsrods:
+        build:
+            context: .
+            args:
+                github_account: irods
+                commitish: master
+        ports:
+            - "2049:2049"
+        volumes:
+            - "./local_config:/nfsrods_config:ro"
+            - "/etc/passwd:/etc/passwd:ro"

@@ -1,4 +1,5 @@
 FROM ubuntu:16.04
+
 ARG sssd=false
 
 RUN apt-get update && \
@@ -6,13 +7,13 @@ RUN apt-get update && \
     apt-get install -y maven git openjdk-8-jdk && \
     apt-get install -y libnss-sss rpcbind
 
-ARG _github_account="irods"
-ARG _sha="main"
+ARG github_account="irods"
+ARG commitish="main"
 
-RUN git clone https://github.com/${_github_account}/irods_client_nfsrods
+RUN git clone https://github.com/${github_account}/irods_client_nfsrods
 
 RUN cd irods_client_nfsrods && \
-    git checkout ${_sha} && \
+    git checkout ${commitish} && \
     mvn clean install -Dmaven.test.skip=true
 
 # Provide default log4j configuration.
