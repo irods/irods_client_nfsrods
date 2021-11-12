@@ -3,6 +3,7 @@ package org.irods.nfsrods.vfs;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.cache.CacheManager;
 import javax.cache.Caching;
@@ -44,6 +45,7 @@ public class ServerMain
     // @formatter:on
 
     private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
+    private static final AtomicBoolean shutdownFlag = new AtomicBoolean();
 
     public static void main(String[] args) throws JargonException, IOException
     {
@@ -73,8 +75,7 @@ public class ServerMain
         }
         
         NFSServerConfig nfsSvrConfig = config.getNfsServerConfig();
-        IRODSFileSystem ifsys = initIRODSFileSystemWithConnectionCaching(config);
-        OncRpcSvc nfsSvc = null;
+        final IRODSFileSystem ifsys = initIRODSFileSystemWithConnectionCaching(config);
 
         configureJargonSslNegotiationPolicy(config, ifsys);
         configureJargonConnectionTimeout(config, ifsys);
@@ -86,7 +87,7 @@ public class ServerMain
             IRODSIdMapper idMapper = new IRODSIdMapper(config, ifactory);
 
             // @formatter:off
-            nfsSvc = new OncRpcSvcBuilder()
+            final OncRpcSvc nfsSvc = new OncRpcSvcBuilder()
                 .withPort(nfsSvrConfig.getPort())
                 .withTCP()
                 .withAutoPublish()
@@ -110,16 +111,32 @@ public class ServerMain
 
             nfsSvc.start();
 
-            log_.info("main - Press any key to shutdown.");
+            log_.info("main - Press ctrl-c to shutdown.");
 
-            System.in.read();
-            
-            log_.info("main - Shutting down ...");
-            
-            close(nfsSvc);
-            close(ifsys);
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                @Override
+                public void run()
+                {
+                    log_.info("main - Shutting down server ...");
+                    
+                    close(nfsSvc);
+                    close(ifsys);
 
-            log_.info("main - done.");
+                    log_.info("main - done.");
+
+                    // Manually shutting down logging requires direct use of the
+                    // log4j 2 API because slf4j does not implement shutdown operations.
+                    LogManager.shutdown();
+
+                    shutdownFlag.set(true);
+                }
+            });
+            
+            // Wait for shutdown signal.
+            while (!shutdownFlag.get())
+            {
+                try { Thread.sleep(250); } catch (InterruptedException e) {}
+            }
         }
         catch (JargonException | IOException e)
         {
@@ -198,17 +215,16 @@ public class ServerMain
 
         try
         {
-            if (_obj instanceof OncRpcSvc)
+            if (_obj instanceof OncRpcSvc service)
             {
-                ((OncRpcSvc) _obj).stop();
+                service.stop();
             }
-            else if (_obj instanceof IRODSFileSystem)
+            else if (_obj instanceof IRODSFileSystem ifsys)
             {
-                IRODSFileSystem fsys = (IRODSFileSystem) _obj;
-                IRODSSession session = fsys.getIrodsSession();
+                IRODSSession session = ifsys.getIrodsSession();
                 CachedIrodsProtocolManager pmgr = (CachedIrodsProtocolManager) session.getIrodsProtocolManager();
                 pmgr.getJargonConnectionCache().close();
-                fsys.closeAndEatExceptions();
+                ifsys.closeAndEatExceptions();
             }
         }
         catch (Exception e)
