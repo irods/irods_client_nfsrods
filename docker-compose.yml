@@ -10,5 +10,5 @@ services:
         ports:
             - "2049:2049"
         volumes:
-            - "./local_config:/nfsrods_config:ro"
+            - "./local_test_config:/nfsrods_config:ro"
             - "/etc/passwd:/etc/passwd:ro"

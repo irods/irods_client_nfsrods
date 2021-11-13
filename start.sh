@@ -18,4 +18,8 @@ if [ "$1" != "sha" ]; then
     service rpcbind start
 fi
 
-exec java -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector -jar /irods_client_nfsrods/irods-vfs-impl/target/nfsrods-2.0.4-jar-with-dependencies.jar "$@"
+exec java \
+    -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector \
+    -Dlog4j2.configurationFile=$NFSRODS_CONFIG_HOME/log4j.properties \
+    -Dlog4j.shutdownHookEnabled=false \
+    -jar /irods_client_nfsrods/irods-vfs-impl/target/nfsrods-2.0.4-jar-with-dependencies.jar "$@"
