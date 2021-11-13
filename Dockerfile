@@ -1,11 +1,21 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 ARG sssd=false
 
-RUN apt-get update && \
+# The following environment variables are required to avoid errors
+# during the installation of openjdk-17-jdk.
+ENV JAVA_HOME "/usr/lib/jvm/java-17-openjdk-amd64"
+ENV PATH "$JAVA_HOME/bin:$PATH"
+
+RUN DEBIAN_FRONTEND=noninteractive \
+    apt-get update && apt-get upgrade -y && \
     apt-get install -y apt-transport-https && \
-    apt-get install -y maven git openjdk-8-jdk && \
+    apt-get install -y wget git openjdk-17-jdk && \
     apt-get install -y libnss-sss rpcbind
+
+RUN wget https://dlcdn.apache.org/maven/maven-3/3.8.4/binaries/apache-maven-3.8.4-bin.tar.gz && \
+    tar -xf apache-maven-3.8.4-bin.tar.gz -C /opt
+ENV PATH "/opt/apache-maven-3.8.4/bin:$PATH"
 
 ARG github_account="irods"
 ARG commitish="main"
