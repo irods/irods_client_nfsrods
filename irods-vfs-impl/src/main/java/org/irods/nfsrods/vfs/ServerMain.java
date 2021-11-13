@@ -8,7 +8,7 @@ import javax.cache.CacheManager;
 import javax.cache.Caching;
 import javax.cache.spi.CachingProvider;
 
-import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.LogManager;
 import org.dcache.nfs.ExportFile;
 import org.dcache.nfs.v4.MDSOperationExecutor;
 import org.dcache.nfs.v4.NFSServerV41;
@@ -38,16 +38,10 @@ public class ServerMain
 {
     // @formatter:off
     private static final String NFSRODS_CONFIG_HOME = System.getenv("NFSRODS_CONFIG_HOME");
-    private static final String LOGGER_CONFIG_PATH  = NFSRODS_CONFIG_HOME + "/log4j.properties";
     private static final String SERVER_CONFIG_PATH  = NFSRODS_CONFIG_HOME + "/server.json";
     private static final String EXPORTS_CONFIG_PATH = NFSRODS_CONFIG_HOME + "/exports";
     private static final String GIT_PROPERTIES      = "/git.properties";
     // @formatter:on
-
-    static
-    {
-        Configurator.initialize(null, LOGGER_CONFIG_PATH);
-    }
 
     private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
 
