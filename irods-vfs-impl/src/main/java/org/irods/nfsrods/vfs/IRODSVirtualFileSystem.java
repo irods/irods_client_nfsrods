@@ -215,14 +215,18 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
         Path path = getPath(toInodeNumber(_inode));
 
-        log_.debug("access - _inode path  = {}", path);
-        log_.debug("access - _mode        = {}", _mode);
-        log_.debug("access - _mode & ACCESS4_READ    = {}", (_mode & ACCESS4_READ));
-        log_.debug("access - _mode & ACCESS4_LOOKUP  = {}", (_mode & ACCESS4_LOOKUP));
-        log_.debug("access - _mode & ACCESS4_MODIFY  = {}", (_mode & ACCESS4_MODIFY));
-        log_.debug("access - _mode & ACCESS4_EXTEND  = {}", (_mode & ACCESS4_EXTEND));
-        log_.debug("access - _mode & ACCESS4_DELETE  = {}", (_mode & ACCESS4_DELETE));
-        log_.debug("access - _mode & ACCESS4_EXECUTE = {}", (_mode & ACCESS4_EXECUTE));
+        log_.debug("""
+                   access - _inode path             = {}
+                   access - _mode                   = {}
+                   access - _mode & ACCESS4_READ    = {} 
+                   access - _mode & ACCESS4_LOOKUP  = {}
+                   access - _mode & ACCESS4_MODIFY  = {}
+                   access - _mode & ACCESS4_EXTEND  = {}
+                   access - _mode & ACCESS4_DELETE  = {}
+                   access - _mode & ACCESS4_EXECUTE = {}""",
+                   path, _mode, _mode & ACCESS4_READ, _mode & ACCESS4_LOOKUP,
+                   _mode & ACCESS4_MODIFY, _mode & ACCESS4_EXTEND, _mode & ACCESS4_DELETE,
+                   _mode & ACCESS4_EXECUTE);
 
         return _mode;
     }
@@ -246,13 +250,18 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         Path parentPath = getPath(toInodeNumber(_parent));
         String path = parentPath.resolve(_name).toString();
 
-        log_.debug("create - _parent      = {}", parentPath);
-        log_.debug("create - _type        = {}", _type);
-        log_.debug("create - _name        = {}", _name);
-        log_.debug("create - _subject     = {}", _subject);
-        log_.debug("create - _subject uid = {}", Subjects.getUid(_subject));
-        log_.debug("create - _subject gid = {}", Subjects.getPrimaryGid(_subject));
-        log_.debug("create - _mode        = {}", Stat.modeToString(_mode));
+        log_.debug("""
+                   create - _parent      = {}
+                   create - _type        = {}
+                   create - _name        = {}
+                   create - _subject     = {}
+                   create - _subject uid = {}
+                   create - _subject gid = {}
+                   create - _mode        = {}""",
+                   parentPath, _type, _name, _subject,
+                   Subjects.getUid(_subject),
+                   Subjects.getPrimaryGid(_subject),
+                   Stat.modeToString(_mode));
 
         try
         {
@@ -358,10 +367,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     {
         String who = _ace.who.toString().split("[@]")[0];
 
-        log_.debug("toUserFilePermission - ace who         = {}", who);
-        log_.debug("toUserFilePermission - ace type        = {}", _ace.type.value.value);
-        log_.debug("toUserFilePermission - ace flag        = {}", _ace.flag.value.value);
-        log_.debug("toUserFilePermission - ace access mask = {}", _ace.access_mask.value.value);
+        log_.debug("""
+                   toUserFilePermission - ace who         = {}
+                   toUserFilePermission - ace type        = {}
+                   toUserFilePermission - ace flag        = {}
+                   toUserFilePermission - ace access mask = {}""",
+                   who, _ace.type.value.value, _ace.flag.value.value, _ace.access_mask.value.value);
         
         if (ACE4_ACCESS_ALLOWED_ACE_TYPE != _ace.type.value.value)
         {
@@ -380,23 +391,30 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
         int accessMask = _ace.access_mask.value.value;
 
-        log_.debug("toUserFilePermission - _accessMask & ACE4_READ_DATA         = {}", accessMask & ACE4_READ_DATA);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_LIST_DIRECTORY    = {}", accessMask & ACE4_LIST_DIRECTORY);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_WRITE_DATA        = {}", accessMask & ACE4_WRITE_DATA);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_ADD_FILE          = {}", accessMask & ACE4_ADD_FILE);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_APPEND_DATA       = {}", accessMask & ACE4_APPEND_DATA);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_ADD_SUBDIRECTORY  = {}", accessMask & ACE4_ADD_SUBDIRECTORY);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_READ_NAMED_ATTRS  = {}", accessMask & ACE4_READ_NAMED_ATTRS);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_WRITE_NAMED_ATTRS = {}", accessMask & ACE4_WRITE_NAMED_ATTRS);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_EXECUTE           = {}", accessMask & ACE4_EXECUTE);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_DELETE_CHILD      = {}", accessMask & ACE4_DELETE_CHILD);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_READ_ATTRIBUTES   = {}", accessMask & ACE4_READ_ATTRIBUTES);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_WRITE_ATTRIBUTES  = {}", accessMask & ACE4_WRITE_ATTRIBUTES);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_DELETE            = {}", accessMask & ACE4_DELETE);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_READ_ACL          = {}", accessMask & ACE4_READ_ACL);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_WRITE_ACL         = {}", accessMask & ACE4_WRITE_ACL);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_WRITE_OWNER       = {}", accessMask & ACE4_WRITE_OWNER);
-        log_.debug("toUserFilePermission - _accessMask & ACE4_SYNCHRONIZE       = {}", accessMask & ACE4_SYNCHRONIZE);
+        log_.debug("""
+                   toUserFilePermission - _accessMask & ACE4_READ_DATA         = {}
+                   toUserFilePermission - _accessMask & ACE4_LIST_DIRECTORY    = {}
+                   toUserFilePermission - _accessMask & ACE4_WRITE_DATA        = {}
+                   toUserFilePermission - _accessMask & ACE4_ADD_FILE          = {}
+                   toUserFilePermission - _accessMask & ACE4_APPEND_DATA       = {}
+                   toUserFilePermission - _accessMask & ACE4_ADD_SUBDIRECTORY  = {}
+                   toUserFilePermission - _accessMask & ACE4_READ_NAMED_ATTRS  = {}
+                   toUserFilePermission - _accessMask & ACE4_WRITE_NAMED_ATTRS = {}
+                   toUserFilePermission - _accessMask & ACE4_EXECUTE           = {}
+                   toUserFilePermission - _accessMask & ACE4_DELETE_CHILD      = {}
+                   toUserFilePermission - _accessMask & ACE4_READ_ATTRIBUTES   = {}
+                   toUserFilePermission - _accessMask & ACE4_WRITE_ATTRIBUTES  = {}
+                   toUserFilePermission - _accessMask & ACE4_DELETE            = {}
+                   toUserFilePermission - _accessMask & ACE4_READ_ACL          = {}
+                   toUserFilePermission - _accessMask & ACE4_WRITE_ACL         = {}
+                   toUserFilePermission - _accessMask & ACE4_WRITE_OWNER       = {}
+                   toUserFilePermission - _accessMask & ACE4_SYNCHRONIZE       = {}""",
+                   accessMask & ACE4_READ_DATA, accessMask & ACE4_LIST_DIRECTORY, accessMask & ACE4_WRITE_DATA,
+                   accessMask & ACE4_ADD_FILE, accessMask & ACE4_APPEND_DATA, accessMask & ACE4_ADD_SUBDIRECTORY,
+                   accessMask & ACE4_READ_NAMED_ATTRS, accessMask & ACE4_WRITE_NAMED_ATTRS, accessMask & ACE4_EXECUTE,
+                   accessMask & ACE4_DELETE_CHILD, accessMask & ACE4_READ_ATTRIBUTES, accessMask & ACE4_WRITE_ATTRIBUTES,
+                   accessMask & ACE4_DELETE, accessMask & ACE4_READ_ACL, accessMask & ACE4_WRITE_ACL,
+                   accessMask & ACE4_WRITE_OWNER, accessMask & ACE4_SYNCHRONIZE);
 
         boolean allowReading = (accessMask & ACE4_READ_DATA) != 0;
         boolean allowWriting = (accessMask & (ACE4_WRITE_DATA | ACE4_APPEND_DATA)) != 0;
@@ -470,14 +488,18 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         List<UserFilePermission> newAcl = toUserFilePermissionList(_acl);
         AclDiff diff = new AclDiff();
         
-        log_.debug("diffAcl - current acl = {}", curAcl);
-        log_.debug("diffAcl - new acl = {}", newAcl);
+        log_.debug("""
+                   diffAcl - current acl = {}
+                   diffAcl - new acl     = {}""",
+                   curAcl, newAcl);
 
         diff.added.addAll(newAcl.stream().filter(p -> !containsPermission(curAcl, p)).collect(Collectors.toList()));
         diff.removed.addAll(curAcl.stream().filter(p -> !containsPermission(newAcl, p)).collect(Collectors.toList()));
 
-        log_.debug("diffAcl - (+) = {}", diff.added);
-        log_.debug("diffAcl - (-) = {}", diff.removed);
+        log_.debug("""
+                   diffAcl - (+) = {}
+                   diffAcl - (-) = {}""",
+                   diff.added, diff.removed);
         
         return diff;
     }
@@ -540,8 +562,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
         String path = getPath(toInodeNumber(_inode)).toString();
 
-        log_.debug("setAcl - _inode path = {}", path);
-        log_.debug("setAcl - _acl length = {}", _acl.length);
+        log_.debug("""
+                   setAcl - _inode path = {}
+                   setAcl - _acl length = {}""",
+                   path, _acl.length);
         
         try
         {
@@ -683,30 +707,40 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         }
         
         // @formatter:off
-        log_.debug("checkAcl - _subject uid         = {}", Subjects.getUid(_subject));
-        log_.debug("checkAcl - _subject primary gid = {}", Subjects.getPrimaryGid(_subject));
-        log_.debug("checkAcl - _inode path          = {}", path);
-        log_.debug("checkAcl - _accessMask          = {}", _accessMask);
-        log_.debug("checkAcl - username             = {}", userName);
+        log_.debug("""
+                   checkAcl - _subject uid         = {}
+                   checkAcl - _subject primary gid = {}
+                   checkAcl - _inode path          = {}
+                   checkAcl - _accessMask          = {}
+                   checkAcl - username             = {}""",
+                   Subjects.getUid(_subject), Subjects.getPrimaryGid(_subject),
+                   path, _accessMask, userName);
 
         // access mask values
-        log_.debug("checkAcl - _accessMask & ACE4_READ_DATA         = {}", _accessMask & ACE4_READ_DATA);
-        log_.debug("checkAcl - _accessMask & ACE4_LIST_DIRECTORY    = {}", _accessMask & ACE4_LIST_DIRECTORY);
-        log_.debug("checkAcl - _accessMask & ACE4_WRITE_DATA        = {}", _accessMask & ACE4_WRITE_DATA);
-        log_.debug("checkAcl - _accessMask & ACE4_ADD_FILE          = {}", _accessMask & ACE4_ADD_FILE);
-        log_.debug("checkAcl - _accessMask & ACE4_APPEND_DATA       = {}", _accessMask & ACE4_APPEND_DATA);
-        log_.debug("checkAcl - _accessMask & ACE4_ADD_SUBDIRECTORY  = {}", _accessMask & ACE4_ADD_SUBDIRECTORY);
-        log_.debug("checkAcl - _accessMask & ACE4_READ_NAMED_ATTRS  = {}", _accessMask & ACE4_READ_NAMED_ATTRS);
-        log_.debug("checkAcl - _accessMask & ACE4_WRITE_NAMED_ATTRS = {}", _accessMask & ACE4_WRITE_NAMED_ATTRS);
-        log_.debug("checkAcl - _accessMask & ACE4_EXECUTE           = {}", _accessMask & ACE4_EXECUTE);
-        log_.debug("checkAcl - _accessMask & ACE4_DELETE_CHILD      = {}", _accessMask & ACE4_DELETE_CHILD);
-        log_.debug("checkAcl - _accessMask & ACE4_READ_ATTRIBUTES   = {}", _accessMask & ACE4_READ_ATTRIBUTES);
-        log_.debug("checkAcl - _accessMask & ACE4_WRITE_ATTRIBUTES  = {}", _accessMask & ACE4_WRITE_ATTRIBUTES);
-        log_.debug("checkAcl - _accessMask & ACE4_DELETE            = {}", _accessMask & ACE4_DELETE);
-        log_.debug("checkAcl - _accessMask & ACE4_READ_ACL          = {}", _accessMask & ACE4_READ_ACL);
-        log_.debug("checkAcl - _accessMask & ACE4_WRITE_ACL         = {}", _accessMask & ACE4_WRITE_ACL);
-        log_.debug("checkAcl - _accessMask & ACE4_WRITE_OWNER       = {}", _accessMask & ACE4_WRITE_OWNER);
-        log_.debug("checkAcl - _accessMask & ACE4_SYNCHRONIZE       = {}", _accessMask & ACE4_SYNCHRONIZE);
+        log_.debug("""
+                   checkAcl - _accessMask & ACE4_READ_DATA         = {}
+                   checkAcl - _accessMask & ACE4_LIST_DIRECTORY    = {}
+                   checkAcl - _accessMask & ACE4_WRITE_DATA        = {}
+                   checkAcl - _accessMask & ACE4_ADD_FILE          = {}
+                   checkAcl - _accessMask & ACE4_APPEND_DATA       = {}
+                   checkAcl - _accessMask & ACE4_ADD_SUBDIRECTORY  = {}
+                   checkAcl - _accessMask & ACE4_READ_NAMED_ATTRS  = {}
+                   checkAcl - _accessMask & ACE4_WRITE_NAMED_ATTRS = {}
+                   checkAcl - _accessMask & ACE4_EXECUTE           = {}
+                   checkAcl - _accessMask & ACE4_DELETE_CHILD      = {}
+                   checkAcl - _accessMask & ACE4_READ_ATTRIBUTES   = {}
+                   checkAcl - _accessMask & ACE4_WRITE_ATTRIBUTES  = {}
+                   checkAcl - _accessMask & ACE4_DELETE            = {}
+                   checkAcl - _accessMask & ACE4_READ_ACL          = {}
+                   checkAcl - _accessMask & ACE4_WRITE_ACL         = {}
+                   checkAcl - _accessMask & ACE4_WRITE_OWNER       = {}
+                   checkAcl - _accessMask & ACE4_SYNCHRONIZE       = {}""",
+                   _accessMask & ACE4_READ_DATA, _accessMask & ACE4_LIST_DIRECTORY, _accessMask & ACE4_WRITE_DATA,
+                   _accessMask & ACE4_ADD_FILE, _accessMask & ACE4_APPEND_DATA, _accessMask & ACE4_ADD_SUBDIRECTORY,
+                   _accessMask & ACE4_READ_NAMED_ATTRS, _accessMask & ACE4_WRITE_NAMED_ATTRS, _accessMask & ACE4_EXECUTE,
+                   _accessMask & ACE4_DELETE_CHILD, _accessMask & ACE4_READ_ATTRIBUTES, _accessMask & ACE4_WRITE_ATTRIBUTES,
+                   _accessMask & ACE4_DELETE, _accessMask & ACE4_READ_ACL, _accessMask & ACE4_WRITE_ACL,
+                   _accessMask & ACE4_WRITE_OWNER, _accessMask & ACE4_SYNCHRONIZE);
         // @formatter:on
         
         try
@@ -914,8 +948,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     @Override
     public DirectoryStream list(Inode _inode, byte[] _verifier, long _cookie) throws IOException
     {
-        log_.debug("vfs::list");
-        log_.debug("list - _cookie = {}", _cookie);
+        log_.debug("""
+                   vfs::list
+                   list - _cookie = {}""",
+                   _cookie);
 
         List<DirectoryEntry> list = new ArrayList<>();
 
@@ -991,9 +1027,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         Path parentPath = getPath(toInodeNumber(_parent));
         Path targetPath = parentPath.resolve(_path);
 
-        log_.debug("lookup - _path   = {}", _path);
-        log_.debug("lookup - _parent = {}", parentPath);
-        log_.debug("lookup - Looking up [{}] ...", targetPath);
+        log_.debug("""
+                   lookup - _path   = {}
+                   lookup - _parent = {}
+                   lookup - Looking up [{}] ...""",
+                   _path, parentPath, targetPath);
 
         try
         {
@@ -1091,10 +1129,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         Path srcParentPath = getPath(toInodeNumber(_srcParentInode));
         Path dstParentPath = getPath(toInodeNumber(_dstParentInode));
 
-        log_.debug("move - _inode path (src) = {}", srcParentPath);
-        log_.debug("move - _inode path (dst) = {}", dstParentPath);
-        log_.debug("move - _srcName          = {}", _srcFilename);
-        log_.debug("move - _dstName          = {}", _dstFilename);
+        log_.debug("""
+                   move - _inode path (src) = {}
+                   move - _inode path (dst) = {}
+                   move - _srcName          = {}
+                   move - _dstName          = {}""",
+                   srcParentPath, dstParentPath, _srcFilename, _dstFilename);
 
         IRODSAccount acct = getCurrentIRODSUser().getAccount();
 
@@ -1103,8 +1143,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             Path srcPath = srcParentPath.resolve(_srcFilename);
             Path dstPath = dstParentPath.resolve(_dstFilename);
 
-            log_.debug("move - Source path      = {}", srcPath);
-            log_.debug("move - Destination path = {}", dstPath);
+            log_.debug("""
+                       move - Source path      = {}
+                       move - Destination path = {}""",
+                       srcPath, dstPath);
 
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
             IRODSFile srcFile = ff.instanceIRODSFile(srcPath.toString());
@@ -1185,10 +1227,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         {
             Path path = getPath(toInodeNumber(_inode));
 
-            log_.debug("read - _inode path  = {}", path);
-            log_.debug("read - _data.length = {}", _data.length);
-            log_.debug("read - _offset      = {}", _offset);
-            log_.debug("read - _count       = {}", _count);
+            log_.debug("""
+                       read - _inode path  = {}
+                       read - _data.length = {}
+                       read - _offset      = {}
+                       read - _count       = {}""",
+                       path, _data.length, _offset, _count);
 
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
@@ -1228,8 +1272,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         {
             Path parentPath = getPath(toInodeNumber(_parent));
 
-            log_.debug("remove - _parent = {}", parentPath);
-            log_.debug("remove - _path   = {}", _path);
+            log_.debug("""
+                       remove - _parent = {}
+                       remove - _path   = {}""",
+                       parentPath, _path);
 
             Path objectPath = parentPath.resolve(_path);
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
@@ -1263,9 +1309,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     @Override
     public void setattr(Inode _inode, Stat _stat) throws IOException
     {
-        log_.debug("vfs::setattr");
-        log_.debug("setattr - _inode = {}", getPath(toInodeNumber(_inode)));
-        log_.debug("setattr - _stat  = {}", _stat);
+        log_.debug("""
+                   vfs::setattr
+                   setattr - _inode = {}
+                   setattr - _stat  = {}""",
+                   getPath(toInodeNumber(_inode)), _stat);
 
         if (_stat.isDefined(Stat.StatAttribute.MODE))
         {
@@ -1295,10 +1343,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         {
             Path path = getPath(toInodeNumber(_inode));
 
-            log_.debug("write - _inode path  = {}", path);
-            log_.debug("write - _data.length = {}", _data.length);
-            log_.debug("write - _offset      = {}", _offset);
-            log_.debug("write - _count       = {}", _count);
+            log_.debug("""
+                       write - _inode path  = {}
+                       write - _data.length = {}
+                       write - _offset      = {}
+                       write - _count       = {}""",
+                       path, _data.length, _offset, _count);
 
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
 
@@ -1351,8 +1401,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
     private Stat statPath(Path _path, long _inodeNumber) throws IOException
     {
-        log_.debug("statPath - _inodeNumber          = {}", _inodeNumber);
-        log_.debug("statPath - _path                 = {}", _path);
+        log_.debug("""
+                   statPath - _inodeNumber          = {}
+                   statPath - _path                 = {}""",
+                   _inodeNumber, _path);
 
         IRODSAccount acct = getCurrentIRODSUser().getAccount();
         String path = _path.toString();
@@ -1404,10 +1456,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             stat.setFileid((int) _inodeNumber);
             stat.setGeneration(objStat.getModifiedAt().getTime());
 
-            log_.debug("statPath - User ID           = {}", userId);
-            log_.debug("statPath - Group ID          = {}", groupId);
-            log_.debug("statPath - Permissions       = {}", Stat.modeToString(stat.getMode()));
-            log_.debug("statPath - Stat              = {}", stat);
+            log_.debug("""
+                       statPath - User ID           = {}
+                       statPath - Group ID          = {}
+                       statPath - Permissions       = {}
+                       statPath - Stat              = {}""",
+                       userId, groupId, Stat.modeToString(stat.getMode()), stat);
 
             statObjectCache_.put(cachedStatKey, stat);
 
@@ -1426,9 +1480,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                           List<UserGroup> _groupsContainingUser)
         throws IOException
     {
-        log_.debug("statPath - _inodeNumber          = {}", _inodeNumber);
-        log_.debug("statPath - _path                 = {}", _path);
-        log_.debug("statPath - iRODS permissions     = {}", _entry.getUserFilePermission());
+        log_.debug("""
+                   statPath - _inodeNumber          = {}
+                   statPath - _path                 = {}
+                   statPath - iRODS permissions     = {}""",
+                   _inodeNumber, _path, _entry.getUserFilePermission());
 
         IRODSAccount acct = getCurrentIRODSUser().getAccount();
         String path = _path.toString();
@@ -1479,10 +1535,12 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             stat.setFileid((int) _inodeNumber);
             stat.setGeneration(_entry.getModifiedAt().getTime());
 
-            log_.debug("statPath - User ID           = {}", userId);
-            log_.debug("statPath - Group ID          = {}", groupId);
-            log_.debug("statPath - Permissions       = {}", Stat.modeToString(stat.getMode()));
-            log_.debug("statPath - Stat              = {}", stat);
+            log_.debug("""
+                       statPath - User ID           = {}
+                       statPath - Group ID          = {}
+                       statPath - Permissions       = {}
+                       statPath - Stat              = {}""",
+                       userId, groupId, Stat.modeToString(stat.getMode()), stat);
 
             statObjectCache_.put(cachedStatKey, stat);
 
