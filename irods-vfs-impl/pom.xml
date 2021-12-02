@@ -14,6 +14,10 @@
 	<name>nfsrods</name>
 	<version>2.0.4</version>
 	<description>iRODS VFS implementation for NFS4J</description>
+	
+	<properties>
+		<maven.compiler.release>17</maven.compiler.release>
+	</properties>
 
 	<repositories>
 		<repository>
@@ -177,7 +181,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.3.2</version>
+				<version>3.8.1</version>
 				<configuration>
 					<debug>true</debug>
 				</configuration>
