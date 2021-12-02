@@ -5,16 +5,18 @@
 
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>nfsrods</artifactId>
+
 	<parent>
 		<groupId>org.irods.jargon</groupId>
 		<artifactId>nfs4j-irodsvfs-pom</artifactId>
 		<version>2.0.4</version>
 	</parent>
+
 	<packaging>jar</packaging>
 	<name>nfsrods</name>
 	<version>2.0.4</version>
 	<description>iRODS VFS implementation for NFS4J</description>
-	
+
 	<properties>
 		<maven.compiler.release>17</maven.compiler.release>
 	</properties>
@@ -48,22 +50,27 @@
 					<groupId>log4j</groupId>
 					<artifactId>log4j</artifactId>
 				</exclusion>
+
 				<exclusion>
 					<groupId>org.slf4j</groupId>
 					<artifactId>slf4j-api</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>org.slf4</groupId>
 					<artifactId>slf4j-log4j12</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>com.fasterxml.jackson.core</groupId>
 					<artifactId>jackson-core</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>com.fasterxml.jackson.core</groupId>
 					<artifactId>jackson-databind</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>com.fasterxml.jackson.core</groupId>
 					<artifactId>jackson-annotations</artifactId>
@@ -79,22 +86,27 @@
 					<groupId>log4j</groupId>
 					<artifactId>log4j</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>org.slf4j</groupId>
 					<artifactId>slf4j-api</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>org.slf4</groupId>
 					<artifactId>slf4j-log4j12</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>com.fasterxml.jackson.core</groupId>
 					<artifactId>jackson-core</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>com.fasterxml.jackson.core</groupId>
 					<artifactId>jackson-databind</artifactId>
 				</exclusion>
+				
 				<exclusion>
 					<groupId>com.fasterxml.jackson.core</groupId>
 					<artifactId>jackson-annotations</artifactId>
@@ -204,25 +216,28 @@
 					<debug>true</debug>
 				</configuration>
 			</plugin>
+			
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
+				
 				<configuration>
 					<archive>
 						<manifest>
 							<mainClass>org.irods.nfsrods.vfs.ServerMain</mainClass>
 						</manifest>
+						
 						<manifestEntries>
-							<!--
-							This flag is required for JAR files that contain multiple,
-							java-specific versions of a class (e.g. slf4j-api-impl).
-							 -->
+							<!-- This flag is required for JAR files that contain multiple, java-specific 
+								 versions of a class (e.g. slf4j-api-impl). -->
 							<Multi-Release>true</Multi-Release>
 						</manifestEntries>
 					</archive>
+					
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>
 				</configuration>
+				
 				<executions>
 					<execution>
 						<id>make-assembly</id> <!-- this is used for inheritance merges -->
@@ -233,10 +248,12 @@
 					</execution>
 				</executions>
 			</plugin>
+			
 			<plugin>
 				<groupId>pl.project13.maven</groupId>
 				<artifactId>git-commit-id-plugin</artifactId>
 				<version>4.0.0</version>
+				
 				<executions>
 					<execution>
 						<id>get-the-git-infos</id>
@@ -246,13 +263,16 @@
 						<phase>initialize</phase>
 					</execution>
 				</executions>
+				
 				<configuration>
 					<generateGitPropertiesFile>true</generateGitPropertiesFile>
 					<generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+					
 					<includeOnlyProperties>
 						<includeOnlyProperty>^git.build.(time|version)$</includeOnlyProperty>
 						<includeOnlyProperty>^git.commit.id.(abbrev|full)$</includeOnlyProperty>
 					</includeOnlyProperties>
+					
 					<commitIdGenerationMode>full</commitIdGenerationMode>
 				</configuration>
 			</plugin>
