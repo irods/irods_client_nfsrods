@@ -10,7 +10,7 @@ ENV PATH "$JAVA_HOME/bin:$PATH"
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && apt-get upgrade -y && \
     apt-get install -y apt-transport-https && \
-    apt-get install -y openjdk-17-jdk libnss-sss #rpcbind
+    apt-get install -y openjdk-17-jdk libnss-sss
 
 # Provide default log4j configuration.
 # This keeps log4j quiet when instructing the container to print the SHA.
