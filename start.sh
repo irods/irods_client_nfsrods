@@ -13,9 +13,6 @@ if [ "$1" != "sha" ]; then
     else
        echo "Cert not found for NFSRODS - not importing"
     fi
-
-    # Start services.
-    service rpcbind start
 fi
 
 exec java \
