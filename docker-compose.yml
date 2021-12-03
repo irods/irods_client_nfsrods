@@ -4,11 +4,10 @@ services:
     nfsrods:
         build:
             context: .
-            args:
-                github_account: irods
-                commitish: master
+            dockerfile: Dockerfile
+        image: local/nfsrods:2.0.0
         ports:
             - "2049:2049"
         volumes:
-            - "./local_test_config:/nfsrods_config:ro"
+            - "<path/to/local/config/directory>:/nfsrods_config:ro"
             - "/etc/passwd:/etc/passwd:ro"
