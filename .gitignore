@@ -32,3 +32,4 @@ JargonVersion.java
 *.swp
 build_jar
 run_server
+local_maven_repo/**
