@@ -266,16 +266,7 @@
 				
 				<configuration>
 					<artifactItems>
-						<artifactItem>
-							<groupId>${project.groupId}</groupId>
-							<artifactId>${project.artifactId}</artifactId>
-							<version>${project.version}</version>
-							<type>${project.packaging}</type>
-							<overWrite>true</overWrite>
-							<outputDirectory>${project.basedir}/..</outputDirectory>
-<!-- 							<destFileName>nfsrods</destFileName> -->
-						</artifactItem>
-
+						<!-- Copies the nfsrods JAR file (bundled w/ its dependencies) to the project root. -->
 						<artifactItem>
 							<groupId>${project.groupId}</groupId>
 							<artifactId>${project.artifactId}</artifactId>
@@ -284,7 +275,7 @@
 							<type>${project.packaging}</type>
 							<overWrite>true</overWrite>
 							<outputDirectory>${project.basedir}/..</outputDirectory>
-<!-- 							<destFileName>nfsrods</destFileName> -->
+							<destFileName>nfsrods.jar</destFileName>
 						</artifactItem>
 					</artifactItems>
 				</configuration>
