@@ -5,7 +5,7 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
-        image: local/nfsrods:2.0.0
+        image: local/nfsrods:2
         ports:
             - "2049:2049"
         volumes:
