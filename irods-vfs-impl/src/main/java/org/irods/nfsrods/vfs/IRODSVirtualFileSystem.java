@@ -897,7 +897,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         throws JargonException
     {
         final String cachedObjectKey = _acct.getUserName() + "#" + _path;
-        CachedListingGenQueryResult cachedResult = (CachedListingGenQueryResult ) listOpCache_.get(cachedObjectKey);
+        var cachedResult = (CachedListingGenQueryResult) listOpCache_.get(cachedObjectKey);
 
         CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(_acct);
         ObjStat objStat = lao.retrieveObjectStatForPath(_path);
@@ -908,6 +908,15 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             // since we last saw it.
             if (objStat.getModifiedAt().equals(cachedResult.collectionLastModified))
             {
+            	log_.debug("listDataObjectsAndCollectionsUnderPathWithPermissions - " +
+            	           "mtime has not changed for [{}]. Returning cached result.", _path);
+
+                // Because iRODS timestamps are stored in seconds, operations that trigger
+                // an mtime update may not be detected by NFSRODS if the operations happen
+                // within the same second.
+                //
+                // To get around this limitation, NFSRODS must manually clear this cache
+                // so that the user sees the updates.
                 return cachedResult.entries;
             }
             
@@ -918,6 +927,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             cachedResult = new CachedListingGenQueryResult();
             cachedResult.entries = new ArrayList<>();
         }
+
+        log_.debug("listDataObjectsAndCollectionsUnderPathWithPermissions - Listing contents of [{}] ...", _path);
 
         cachedResult.collectionLastModified = objStat.getModifiedAt();
 
@@ -966,10 +977,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             Path parentPath = getPath(toInodeNumber(_inode));
             log_.debug("list - Listing contents of [{}] ...", parentPath);
 
-            String irodsAbsPath = parentPath.toString();
+            String parentPathString = parentPath.toString();
 
             List<CollectionAndDataObjectListingEntry>
-                entries = listDataObjectsAndCollectionsUnderPathWithPermissions(acct, irodsAbsPath);
+                entries = listDataObjectsAndCollectionsUnderPathWithPermissions(acct, parentPathString);
             log_.debug("list - found {} entries.", entries.size());
             
             // 0, 1, and 2 are reserved cookie values.
@@ -1104,6 +1115,14 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             file.mkdir();
             file.close();
 
+            // Because iRODS timestamps are stored in seconds, operations that trigger
+            // an mtime update may not be detected by NFSRODS if the operations happen
+            // within the same second.
+            //
+            // To get around this limitation, NFSRODS must manually clear this cache
+            // so that the user sees the updates.
+            listOpCache_.remove(acct.getUserName() + "#" + parentPath.toString());
+
             long inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
             inodeToPathMapper_.map(inodeNumber, file.getAbsolutePath());
 
@@ -1188,6 +1207,22 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             }
 
             inodeToPathMapper_.remap(getInodeNumber(srcPath), srcPath, dstPath);
+
+            // Because iRODS timestamps are stored in seconds, operations that trigger
+            // an mtime update may not be detected by NFSRODS if the operations happen
+            // within the same second.
+            //
+            // To get around this limitation, NFSRODS must manually clear this cache
+            // so that the user sees the updates.
+            listOpCache_.remove(acct.getUserName() + "#" + srcParentPath.toString());
+
+            if (!srcParentPath.equals(dstParentPath))
+            {
+            	listOpCache_.remove(acct.getUserName() + "#" + dstParentPath.toString());
+            }
+
+            statObjectCache_.remove(acct.getUserName() + "_" + srcParentPath.toString());
+            statObjectCache_.remove(acct.getUserName() + "_" + dstParentPath.toString());
 
             return true;
         }
@@ -1293,6 +1328,18 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             inodeToPathMapper_.unmap(getInodeNumber(objectPath), objectPath);
 
+            // Because iRODS timestamps are stored in seconds, operations that trigger
+            // an mtime update may not be detected by NFSRODS if the operations happen
+            // within the same second.
+            //
+            // To get around this limitation, NFSRODS must manually clear this cache
+            // so that the user sees the updates.
+            listOpCache_.remove(acct.getUserName() + "#" + objectPath.getParent().toString());
+
+            // Remove any cached stat information as this can lead to unwanted errors
+            // when carrying out later requests.
+            statObjectCache_.remove(acct.getUserName() + "_" + parentPath.toString());
+
             log_.debug("remove - [{}] removed.", objectPath);
         }
         catch (JargonException e)
@@ -1332,7 +1379,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     {
         throw new UnsupportedOperationException("Not supported");
     }
-
+    
     @Override
     public WriteResult write(Inode _inode, byte[] _data, long _offset, int _count, StabilityLevel _stabilityLevel)
         throws IOException
@@ -1356,13 +1403,21 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             // the write operation from multiple threads. This will result in
             // an error if old stat information is used across multiple writes.
             // We remove any cached stat object for the path to avoid this.
-            statObjectCache_.remove(acct.getUserName() + "_" + path);
+            statObjectCache_.remove(acct.getUserName() + "_" + path.toString());
+
+            // Because iRODS timestamps are stored in seconds, operations that trigger
+            // an mtime update may not be detected by NFSRODS if the operations happen
+            // within the same second.
+            //
+            // To get around this limitation, NFSRODS must manually clear this cache
+            // so that the user sees the updates.
+            listOpCache_.remove(acct.getUserName() + "#" + path.getParent().toString());
 
             IRODSFileFactory ff = factory_.getIRODSFileFactory(acct);
 
-            final boolean coordinated = true;
+            final var coordinated = true;
             IRODSRandomAccessFile file = ff.instanceIRODSRandomAccessFile(path.toString(), OpenFlags.READ_WRITE, coordinated);
-
+            
             try (AutoClosedIRODSRandomAccessFile ac = new AutoClosedIRODSRandomAccessFile(file))
             {
                 file.seek(_offset, FileIOOperations.SeekWhenceType.SEEK_START);
