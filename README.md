@@ -41,7 +41,7 @@ $ docker build -t nfsrods .
 ```
 
 ### Configuring
-There are three config files located under `/path/to/irods_client_nfsrods/irods-vfs-impl/config`:
+There are three config files located under `/path/to/irods_client_nfsrods/config`:
 - exports
 - log4j.properties
 - server.json
@@ -49,7 +49,7 @@ There are three config files located under `/path/to/irods_client_nfsrods/irods-
 The first step in configuring the server is to copy these files into another location on disk like so:
 ```bash
 $ mkdir ~/nfsrods_config
-$ cp /path/to/irods_client_nfsrods/irods-vfs-impl/config/* ~/nfsrods_config
+$ cp /path/to/irods_client_nfsrods/config/* ~/nfsrods_config
 ```
 These files will be mounted into the NFSRODS docker container. This will be discussed later.
 

@@ -14,7 +14,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
 
 # Provide default log4j configuration.
 # This keeps log4j quiet when instructing the container to print the SHA.
-ADD irods-vfs-impl/config/log4j.properties /nfsrods_config/log4j.properties
+ADD config/log4j.properties /nfsrods_config/log4j.properties
 
 ADD nfsrods.jar start.sh /
 RUN chmod u+x start.sh
