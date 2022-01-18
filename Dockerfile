@@ -7,7 +7,7 @@ RUN apt-get update && \
     apt-get install -y libnss-sss rpcbind
 
 ARG _github_account="irods"
-ARG _sha="master"
+ARG _sha="main"
 
 RUN git clone https://github.com/${_github_account}/irods_client_nfsrods
 
