@@ -108,7 +108,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     private final IRODSIdMapper idMapper_;
     private final InodeToPathMapper inodeToPathMapper_;
     private final IRODSAccount adminAcct_;
-    private final ReadWriteAclWhitelist readWriteAclWhitelist_;
+    private final ReadWriteAclAllowlist readWriteAclAllowlist_;
     private final boolean allowOverwriteOfExistingFiles_;
     private final boolean usingOracleDB_;
 
@@ -167,7 +167,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                                            rodsSvrConfig.getDefaultResource());
         // @formatter:on
 
-        readWriteAclWhitelist_ = new ReadWriteAclWhitelist(factory_, adminAcct_);
+        readWriteAclAllowlist_ = new ReadWriteAclAllowlist(factory_, adminAcct_);
         
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
         allowOverwriteOfExistingFiles_ = nfsSvrConfig.allowOverwriteOfExistingFiles();
@@ -622,9 +622,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     
     private boolean isAllowedToReadWriteAclForPath(String _userName, String _path) throws JargonException
     {
-        if (readWriteAclWhitelist_.contains(_userName))
+        if (readWriteAclAllowlist_.contains(_userName))
         {
-            String prefix = readWriteAclWhitelist_.getPathPrefix(_userName);
+            String prefix = readWriteAclAllowlist_.getPathPrefix(_userName);
 
             log_.debug("isAllowedToReadWriteAclForPath - User path prefix = {}", prefix);
 
@@ -646,9 +646,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         {
             String groupName = ug.getUserGroupName();
 
-            if (readWriteAclWhitelist_.contains(groupName))
+            if (readWriteAclAllowlist_.contains(groupName))
             {
-                String prefix = readWriteAclWhitelist_.getPathPrefix(groupName);
+                String prefix = readWriteAclAllowlist_.getPathPrefix(groupName);
 
                 log_.debug("isAllowedToReadWriteAclForPath - Group path prefix = {}", prefix);
 
@@ -764,7 +764,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                     return Access.ALLOW;
                 }
                 
-                // Checks the ACL whitelist to see if the user should be allowed to read/write attributes and ACLs.
+                // Checks the ACL allowlist to see if the user should be allowed to read/write attributes and ACLs.
                 if (isAllowedToReadWriteAclForPath(userName, path))
                 {
                     log_.debug("checkAcl - User [{}] has special privileges to read/write ACLs, access allowed.", userName);

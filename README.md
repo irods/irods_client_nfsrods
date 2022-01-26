@@ -3,22 +3,6 @@ A standalone NFSv4.1 server (via [nfs4j](https://github.com/dCache/nfs4j)) with 
 
 ![NFSRODS network diagram](nfsrods_diagram.png)
 
-## Table of Contents
-- [Features](#features)
-- [Requirements](#requirements)
-- [General Information](#general-information)
-  + [Building](#building)
-  + [Configuring](#configuring)
-  + [Running](#running)
-  + [Mounting](#mounting)
-- [Unix Permissions and NFSv4 ACLs](#unix-permissions-and-nfsv4-acls)
-  + [Using nfs4_setfacl](#using-nfs4_setfacl)
-  + [Using nfs4_getfacl](#using-nfs4_getfacl)
-  + [nfs4_setfacl Whitelist](#nfs4_setfacl-whitelist)
-- [TODOs](#todos)
-- [Notes](#notes)
-- [Troubleshooting](#troubleshooting)
-
 ## Features
 - Configurable
 - Exposes iRODS through a mount point
@@ -28,15 +12,16 @@ A standalone NFSv4.1 server (via [nfs4j](https://github.com/dCache/nfs4j)) with 
 
 ## Requirements
 - iRODS v4.2.9+
-- Docker (as of this writing, v18.09.0)
-- OS NFS packages (e.g. Ubuntu 16.04: nfs-common)
+- Docker (as of this writing, v20.10.7)
+- OS NFS packages (e.g. Ubuntu 18.04: nfs-common)
 
 ## General Information
-The following instructions assume you're running Ubuntu 16.04 and Bash.
+The following instructions assume you're running Ubuntu 18.04 and Bash.
 
-### Building
+### Building (from source)
 ```bash
 $ cd /path/to/irods_client_nfsrods
+$ bash build_jar.sh
 $ docker build -t nfsrods .
 ```
 
@@ -193,9 +178,12 @@ $ docker run -d --name nfsrods \
              nfsrods
 ```
 
-Using sssd, NFSRODS can use any sssd domain for ID mapping, including AD or
-LDAP. If sssd and `/etc/passwd` are used together, passwd will be consulted
-first.
+Using sssd, NFSRODS can use any sssd domain for ID mapping, including AD or LDAP. If sssd and `/etc/passwd` are used together, passwd will be consulted first.
+
+#### Docker Compose
+Using `docker run` to launch NFSRODS can be inconvenient given the number of arguments one has to pass. Docker Compose makes up for this by giving users the ability to define and run their applications in a manageable way.
+
+For that reason, we've provided a docker-compose.yml file. You'll need to update it before use though.
 
 ### Mounting
 ```bash
@@ -216,7 +204,7 @@ In iRODS, multiple users and groups can be given different permissions on a coll
 
 ![NFSRODS ACLs](nfsrods_acls.png)
 
-NFSv4 ACLs provide more than enough control for reflecting iRODS permissions in Unix. To manage permissions through NFSRODS, you'll need to install the package that contains `nfs4_getfacl` and `nfs4_setfacl`. On Ubuntu 16.04, that package would be `nfs4-acl-tools`. With these commands, you can view and modify all permissions in iRODS.
+NFSv4 ACLs provide more than enough control for reflecting iRODS permissions in Unix. To manage permissions through NFSRODS, you'll need to install the package that contains `nfs4_getfacl` and `nfs4_setfacl`. On Ubuntu 18.04, that package would be `nfs4-acl-tools`. With these commands, you can view and modify all permissions in iRODS.
 
 **IMPORTANT:** The order of ACEs within an ACL does not matter in NFSRODS. When NFSRODS has to decide whether a user is allowed to execute an operation, it takes the highest level of permission for that user (including groups the user is a member of).
 
@@ -252,16 +240,16 @@ Using this command is much simpler. When invoked, it returns the list of iRODS p
 | write       | rwa                  |
 | read        | r                    |
 
-### nfs4_setfacl Whitelist
-NFSRODS offers a whitelist for granting `nfs4_setfacl` permission to particular users.
+### nfs4_setfacl Allowlist
+NFSRODS offers a allowlist for granting `nfs4_setfacl` permission to particular users.
 
-If a user is in the whitelist or in a group in the whitelist, they can run `nfs4_setfacl` on the specified logical path or any collection or data object **below** it, regardless of their iRODS permissions on that collection or data object.
+If a user is in the allowlist or in a group in the allowlist, they can run `nfs4_setfacl` on the specified logical path or any collection or data object **below** it, regardless of their iRODS permissions on that collection or data object.
 
-A `rodsadmin` can add a user to the whitelist by adding a specific iRODS AVU (metadata) on the user.
+A `rodsadmin` can add a user to the allowlist by adding a specific iRODS AVU (metadata) on the user.
 ```bash
 $ imeta add -u <username> irods::nfsrods::grant_nfs4_setfacl <logical_path_prefix>
 ```
-The following example demonstrates adding `alice#tempZone` to the whitelist with a prefix of `/tempZone/project_a/lab/notes`:
+The following example demonstrates adding `alice#tempZone` to the allowlist with a prefix of `/tempZone/project_a/lab/notes`:
 ```bash
 $ imeta add -u alice irods::nfsrods::grant_nfs4_setfacl /tempZone/project_a/lab/notes
 $ imeta ls -u alice
@@ -275,15 +263,12 @@ A user can set permissions via `nfs4_setfacl` on a collection or data object if 
 1. The user is an iRODS administrator (i.e. `rodsadmin`).
 2. The user has `own` permission on the collection or data object.
 3. The user is a member of a group that has `own` permission on the collection or data object.
-4. The user is in the whitelist with a prefix that covers the collection or data object.
-5. The user is a member of a group in the whitelist with a prefix that covers the collection or data object.
+4. The user is in the allowlist with a prefix that covers the collection or data object.
+5. The user is a member of a group in the allowlist with a prefix that covers the collection or data object.
 
 ### Additional NFSv4 Information
 - [RFC 7530](https://tools.ietf.org/html/rfc7530)
 - [HOWTO: Use NFSv4 ACL](https://www.osc.edu/book/export/html/4523)
-
-## TODOs
-- Implement support for Parallel File Transfers
 
 ## Notes
 - `chmod` is currently implemented as a `NOP` and will return `0`.
