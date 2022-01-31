@@ -274,6 +274,15 @@ A user can set permissions via `nfs4_setfacl` on a collection or data object if 
 - `chmod` is currently implemented as a `NOP` and will return `0`.
 - NFSRODS currently reports disk free (`df -a`) as `0` to avoid being misleading to other programs.
 
+## Limitations
+### Limitation 1: Write operations do not trigger replication on a replication resource
+This is primarily due to NFSRODS being at the mercy of the client-side application. NFSRODS cannot make assumptions about what a client-side application will do with regard to multiple streams into a particular data object.
+
+See https://github.com/irods/irods/issues/6142 for more details.
+
+**Workaround**: Configure NFSRODS to point at a resource hierarchy that does not contain a replication resource.
+
+A delay rule could be configured to replicate any data to the eventual target location (including the replication resource) or the [Storage Tiering Capability](https://github.com/irods/irods_capability_storage_tiering) could be leveraged to provide this more generally.
 
 ## Troubleshooting
 ### Q. The NFSRODS docker container won't start. Why?
