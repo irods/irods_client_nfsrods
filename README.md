@@ -22,7 +22,7 @@ The following instructions assume you're running Ubuntu 18.04 and Bash.
 ```bash
 $ cd /path/to/irods_client_nfsrods
 $ bash build_jar.sh
-$ docker build -t nfsrods .
+$ docker build -t local/nfsrods .
 ```
 
 ### Configuring
@@ -132,7 +132,7 @@ $ docker run -d --name nfsrods \
              -p <public_port>:2049 \
              -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
              -v </full/path/to/etc/passwd/formatted/file>:/etc/passwd:ro \
-             nfsrods
+             local/nfsrods
 ```
 
 This command does the following:
@@ -175,7 +175,7 @@ $ docker run -d --name nfsrods \
              -p <public_port>:2049 \
              -v </full/path/to/nfsrods_config>:/nfsrods_config:ro \
              -v /var/lib/sss:/var/lib/sss \
-             nfsrods
+             local/nfsrods
 ```
 
 Using sssd, NFSRODS can use any sssd domain for ID mapping, including AD or LDAP. If sssd and `/etc/passwd` are used together, passwd will be consulted first.
@@ -183,7 +183,7 @@ Using sssd, NFSRODS can use any sssd domain for ID mapping, including AD or LDAP
 #### Docker Compose
 Using `docker run` to launch NFSRODS can be inconvenient given the number of arguments one has to pass. Docker Compose makes up for this by giving users the ability to define and run their applications in a manageable way.
 
-For that reason, we've provided a docker-compose.yml file. You'll need to update it before use though.
+For that reason, we've provided a `docker-compose.yml.template` file. Copy it to `docker-compose.yml`, point to your configuration directory, and then run.
 
 ### Mounting
 ```bash
