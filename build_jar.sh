@@ -5,7 +5,7 @@
 #
 # The local_maven_repo directory keeps your personal maven repository
 # (i.e. $HOME/.m2) clean and safe from the "root" user.
-docker run -it --rm --name nfsrods_builder \
+docker run --rm --name nfsrods_builder \
     -v $PWD/local_maven_repo:/root/.m2 \
     -v $PWD:/irods_client_nfsrods \
     -w /irods_client_nfsrods \
