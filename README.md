@@ -21,7 +21,7 @@ The following instructions assume you're running Ubuntu 18.04 and Bash.
 ### Building (from source)
 ```bash
 $ cd /path/to/irods_client_nfsrods
-$ bash build_jar.sh
+$ bash build_jar.sh # Consider passing --non-interactive if building in an environment without TTY support.
 $ docker build -t local/nfsrods .
 ```
 
