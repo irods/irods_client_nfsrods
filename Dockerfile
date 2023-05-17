@@ -10,6 +10,7 @@ ENV PATH "$JAVA_HOME/bin:$PATH"
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && apt-get upgrade -y && \
     apt-get install -y apt-transport-https && \
+    apt-get install -y ca-certificates-java && \
     apt-get install -y openjdk-17-jdk libnss-sss
 
 # Provide default log4j configuration.
