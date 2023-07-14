@@ -64,6 +64,7 @@ import org.dcache.nfs.vfs.Inode;
 import org.dcache.nfs.vfs.Stat;
 import org.dcache.nfs.vfs.Stat.Type;
 import org.dcache.nfs.vfs.VirtualFileSystem;
+
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
@@ -76,6 +77,7 @@ import org.irods.jargon.core.pub.CollectionAndDataObjectListAndSearchAO;
 import org.irods.jargon.core.pub.DataObjectAO;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystemAO;
+import org.irods.jargon.core.pub.IRODSGenQueryExecutor;
 import org.irods.jargon.core.pub.UserAO;
 import org.irods.jargon.core.pub.UserGroupAO;
 import org.irods.jargon.core.pub.domain.ObjStat;
@@ -86,12 +88,21 @@ import org.irods.jargon.core.pub.io.FileIOOperations;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileFactory;
 import org.irods.jargon.core.pub.io.IRODSRandomAccessFile;
-import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectType;
+import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
+import org.irods.jargon.core.query.GenQueryBuilderException;
+import org.irods.jargon.core.query.IRODSGenQueryBuilder;
+import org.irods.jargon.core.query.IRODSGenQueryFromBuilder;
+import org.irods.jargon.core.query.IRODSQueryResultRow;
+import org.irods.jargon.core.query.IRODSQueryResultSet;
+import org.irods.jargon.core.query.JargonQueryException;
+import org.irods.jargon.core.query.QueryConditionOperators;
+import org.irods.jargon.core.query.RodsGenQueryEnum;
 import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -279,7 +290,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                 }
             }
             
-            long newInodeNumber = inodeToPathMapper_.getAndIncrementFileID();
+            CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(adminAcct_);
+            ObjStat objStat = lao.retrieveObjectStatForPath(newFile.getAbsolutePath());
+            
+            long newInodeNumber = objStat.getDataId();
             inodeToPathMapper_.map(newInodeNumber, path);
 
             return toFh(newInodeNumber);
@@ -684,7 +698,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             return Access.DENY;
         }
 
-        String path = getPath(toInodeNumber(_inode)).toString();
+        long inodeNum = toInodeNumber(_inode);
+        String path = getPath(inodeNum).toString();
         
         // Key   (String) => <user_id>#<access_mask>#<path>
         // Value (Access) => ALLOW/DENY
@@ -853,7 +868,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
     @Override
     public Inode getRootInode() throws IOException
     {
-        return toFh(1);
+        return toFh(getInodeNumber(ZONE_COLLECTION)); // ZONE_COLLECTION is set to rodsSvrConfig.getZone()
     }
 
     @Override
@@ -955,7 +970,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
         return entries;
     }
-    
+
     @Override
     public DirectoryStream list(Inode _inode, byte[] _verifier, long _cookie) throws IOException
     {
@@ -1006,7 +1021,9 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
                     if (null == inodeNumber)
                     {
-                        inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
+                        CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(adminAcct_);
+                        ObjStat objStat = lao.retrieveObjectStatForPath(path.toAbsolutePath().toString());
+                        inodeNumber = (long) objStat.getDataId();
                         inodeToPathMapper_.map(inodeNumber, path);
                     }
                     
@@ -1018,7 +1035,6 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         }
         catch (JargonException e)
         {
-            log_.error(e.getMessage());
             throw new IOException(e);
         }
         finally
@@ -1049,10 +1065,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             CollectionAndDataObjectListAndSearchAO lao = null;
             lao = factory_.getCollectionAndDataObjectListAndSearchAO(adminAcct_);
             boolean isTargetValid = false;
-
+            ObjStat objStat = null;
             try
             {
-                isTargetValid = (lao.retrieveObjectStatForPath(targetPath.toString()) != null);
+                objStat = lao.retrieveObjectStatForPath(targetPath.toAbsolutePath().toString());
+                isTargetValid = (null != objStat);
             }
             catch (Exception e)
             {
@@ -1070,7 +1087,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                     return toFh(inodeNumber);
                 }
 
-                inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
+                inodeNumber = (long) objStat.getDataId();
+
                 inodeToPathMapper_.map(inodeNumber, targetPath);
 
                 return toFh(inodeNumber);
@@ -1123,7 +1141,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             // so that the user sees the updates.
             listOpCache_.remove(acct.getUserName() + "#" + parentPath.toString());
 
-            long inodeNumber = inodeToPathMapper_.getAndIncrementFileID();
+            CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(adminAcct_);
+            ObjStat objStat = lao.retrieveObjectStatForPath(file.getAbsolutePath());
+            long inodeNumber = objStat.getDataId();
+
             inodeToPathMapper_.map(inodeNumber, file.getAbsolutePath());
 
             return toFh(inodeNumber);
@@ -1645,15 +1666,118 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         return Inode.forFile(Longs.toByteArray(_inodeNumber));
     }
 
+    private Optional<String> findLogicalPathByInodeNumber(long _inodeNumber, ObjectType _option) 
+    {
+        // if getPath() returns null, we'll use GenQuery to find the path
+        log_.debug("""
+                   findLogicalPathByInodeNumber - _inodeNumber = {}
+                   findLogicalPathByInodeNumber - _option      = {}""", 
+                   _inodeNumber, _option);
+
+        String strPath = null;
+        IRODSGenQueryBuilder builder = null;
+        IRODSGenQueryExecutor gqe = null;
+        IRODSGenQueryFromBuilder query = null;
+        IRODSQueryResultSet resultSet = null;
+        List<IRODSQueryResultRow> results = null;
+        
+        if (ObjectType.COLLECTION == _option) 
+        {
+            try 
+            {
+                builder = new IRODSGenQueryBuilder(true, null);
+    
+                builder.addSelectAsGenQueryValue(RodsGenQueryEnum.COL_COLL_ID)
+                    .addSelectAsGenQueryValue(RodsGenQueryEnum.COL_COLL_NAME)
+                    .addConditionAsGenQueryField(RodsGenQueryEnum.COL_COLL_ID, QueryConditionOperators.EQUAL, String.valueOf(_inodeNumber));
+
+                // the constructed GenQuery is: SELECT COLL_ID, COLL_NAME WHERE COLL_ID = '<_inodeNumber>'
+                gqe = factory_.getIRODSGenQueryExecutor(adminAcct_);
+                query = builder.exportIRODSQueryFromBuilder(50);
+                resultSet = gqe.executeIRODSQueryAndCloseResultInZone(query, 0, adminAcct_.getZone());
+                results = resultSet.getResults();
+
+                log_.debug("found row is (coll id) [{}]", results);
+                if (!results.isEmpty()) 
+                {
+                    // column 1 = COLL_NAME; COLL_NAME value example: /tempZone/home/<username>/<coll>
+                    strPath = results.get(0).getColumn(1); 
+                    log_.debug("findLogicalPathByInodeNumber - Path from coll_id [{}]", strPath);
+                }                                    
+            } 
+            catch (GenQueryBuilderException | JargonException | JargonQueryException e)
+            {
+                log_.error(e.getMessage());
+            }    
+        } 
+        else if (ObjectType.DATA_OBJECT == _option) 
+        {
+            try 
+            {
+                builder = new IRODSGenQueryBuilder(true, null);
+    
+                builder.addSelectAsGenQueryValue(RodsGenQueryEnum.COL_D_DATA_ID)
+                    .addSelectAsGenQueryValue(RodsGenQueryEnum.COL_COLL_NAME)
+                    .addSelectAsGenQueryValue(RodsGenQueryEnum.COL_DATA_NAME)
+                    .addConditionAsGenQueryField(RodsGenQueryEnum.COL_D_DATA_ID, QueryConditionOperators.EQUAL, String.valueOf(_inodeNumber));
+                
+                // the constructed GenQuery is: SELECT DATA_ID, COLL_NAME, DATA_NAME WHERE DATA_ID = '<_inodeNumber>'
+    
+                gqe = factory_.getIRODSGenQueryExecutor(adminAcct_);
+                query = builder.exportIRODSQueryFromBuilder(50);
+                resultSet = gqe.executeIRODSQueryAndCloseResultInZone(query, 0, adminAcct_.getZone());
+                results = resultSet.getResults();
+                log_.debug("findLogicalPathByInodeNumber - Found row is (data id) [{}]", results);
+                if (!results.isEmpty()) 
+                {
+                    // since DATA_NAME is only the filename (no path), we'll need to combine it with COLL_NAME to get the full path
+                    // column 1 = COLL_NAME, column 2 = DATA_NAME
+                    strPath = results.get(0).getColumn(1) + '/' + results.get(0).getColumn(2);   
+                    
+                    log_.debug("findLogicalPathByInodeNumber - Combined path is [{}]", strPath);
+                }                       
+            } 
+            catch (GenQueryBuilderException | JargonException | JargonQueryException e)
+            {
+                log_.error(e.getMessage());
+            }
+        } 
+        else 
+        {
+            log_.warn("findLogicalPathByInodeNumber - Option [{}] is not supported. choose from `ObjectType.COLLECTION` or `ObjectType.DATA_OBJECT`", _option);
+        }
+
+        return Optional.ofNullable(strPath);
+    }
+
     private Path getPath(long _inodeNumber) throws IOException
     {
         Path path = inodeToPathMapper_.getPathByInodeNumber(_inodeNumber);
 
+        // If no path matches _inodeNumber, we'll need to find where we via GenQuery.
+        // Since a path may lead to a data object or a collection, we'll need to check both when using GenQuery.
         if (path == null)
         {
-            throw new NoEntException("Path does not exist for [" + _inodeNumber + "]");
-        }
+            log_.debug("getPath - Path was null (maybe because NFSRODS was restarted without remounting), looking up in GenQuery");
 
+            Optional<String> genQueryPath = findLogicalPathByInodeNumber(_inodeNumber, ObjectType.COLLECTION);
+
+            if (genQueryPath.isEmpty()) 
+            {
+                genQueryPath = findLogicalPathByInodeNumber(_inodeNumber, ObjectType.DATA_OBJECT);  
+
+                // if GenQuery didn't find a valid path, throw an exception
+                if (genQueryPath.isEmpty()) 
+                {
+                    throw new NoEntException("getPath - Path does not exist for inode number [" + _inodeNumber + "]");
+                }
+            }
+
+            path = ROOT_COLLECTION.resolve(genQueryPath.get()); // genQueryPath example: /tempZone/home/<username>/<file>
+            log_.debug("getPath - Path found from GenQuery [{}]", path);
+            inodeToPathMapper_.map(_inodeNumber, path);
+            return path;
+        }
         return path;
     }
 

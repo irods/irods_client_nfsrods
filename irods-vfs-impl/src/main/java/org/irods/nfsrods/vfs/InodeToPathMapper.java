@@ -4,7 +4,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -14,7 +13,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.pub.CollectionAndDataObjectListAndSearchAO;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
+import org.irods.jargon.core.pub.domain.ObjStat;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
@@ -30,7 +31,6 @@ class InodeToPathMapper
     private Map<Long, Path> inodeToPath_;
     private Map<Path, Long> pathToInode_;
     private Set<Long> availableInodeNumbers_;
-    private long fileID_;
     private ReadWriteLock lock_;
 
     public InodeToPathMapper(ServerConfig _config, IRODSAccessObjectFactory _factory) throws JargonException
@@ -38,7 +38,6 @@ class InodeToPathMapper
         inodeToPath_ = new HashMap<>();
         pathToInode_ = new HashMap<>();
         availableInodeNumbers_ = new HashSet<>();
-        fileID_ = 1; // Inode numbers start at 1
         lock_ = new ReentrantReadWriteLock();
         
         NFSServerConfig nfsSvrConfig = _config.getNfsServerConfig();
@@ -58,7 +57,7 @@ class InodeToPathMapper
 
         try
         {
-            establishRoot(_factory.getIRODSFileFactory(acct).instanceIRODSFile(rootPath));
+            establishRoot(_factory.getIRODSFileFactory(acct).instanceIRODSFile(rootPath), _factory, acct);
         }
         finally
         {
@@ -66,36 +65,22 @@ class InodeToPathMapper
         }
     }
 
-    public Long getAndIncrementFileID()
-    {
-        final Wrapper<Long> ref = new Wrapper<>();
-
-        new AtomicRead(() -> {
-            if (!availableInodeNumbers_.isEmpty())
-            {
-                Iterator<Long> it = availableInodeNumbers_.iterator();
-                ref.value = it.next();
-                it.remove();
-
-                return;
-            }
-
-            ref.value = fileID_++;
-        });
-
-        return ref.value;
-    }
-
-    private void establishRoot(IRODSFile _irodsMountPoint) throws DataNotFoundException
+    private void establishRoot(IRODSFile _irodsMountPoint, IRODSAccessObjectFactory _factory, IRODSAccount _adminAcct) throws DataNotFoundException, JargonException
     {
         if (!_irodsMountPoint.exists())
         {
             throw new DataNotFoundException("Cannot establish root at [" + _irodsMountPoint + "]");
         }
 
+
+        CollectionAndDataObjectListAndSearchAO lao = _factory.getCollectionAndDataObjectListAndSearchAO(_adminAcct);
+        ObjStat objStat = lao.retrieveObjectStatForPath(_irodsMountPoint.getAbsolutePath());
+        long newInodeNumber = objStat.getDataId();
+
         log_.debug("establishRoot - Mapping root to [{}] ...", _irodsMountPoint);
 
-        map(getAndIncrementFileID(), _irodsMountPoint.getAbsolutePath());
+        map((long) newInodeNumber, _irodsMountPoint.getAbsolutePath());
+        
 
         log_.debug("establishRoot - Mapping successful.");
     }
