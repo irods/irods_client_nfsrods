@@ -21,6 +21,7 @@ import org.dcache.oncrpc4j.rpc.OncRpcSvcBuilder;
 import org.irods.jargon.core.connection.ClientServerNegotiationPolicy;
 import org.irods.jargon.core.connection.ClientServerNegotiationPolicy.SslNegotiationPolicy;
 import org.irods.jargon.core.connection.IRODSSession;
+import org.irods.jargon.core.packinstr.StartupPack;
 import org.irods.jargon.core.connection.SettableJargonProperties;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
@@ -49,6 +50,8 @@ public class ServerMain
 
     public static void main(String[] args) throws JargonException, IOException
     {
+        StartupPack.setApplicationName("NFSRODS");
+
         {
             Properties props = new Properties();
             props.load(ServerMain.class.getResourceAsStream(GIT_PROPERTIES));
