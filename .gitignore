@@ -33,3 +33,4 @@ JargonVersion.java
 build_jar
 run_server
 local_maven_repo/**
+.vscode/
