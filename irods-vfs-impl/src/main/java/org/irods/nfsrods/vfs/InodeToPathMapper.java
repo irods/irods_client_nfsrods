@@ -154,7 +154,7 @@ class InodeToPathMapper
 
             if (otherPath != null)
             {
-                throw new IllegalStateException("Inode number is already mapped to exisiting path");
+                throw new IllegalStateException("Inode number is already mapped to existing path");
             }
 
             Long otherInodeNumber = pathToInode_.putIfAbsent(_path, _inodeNumber);
@@ -166,7 +166,7 @@ class InodeToPathMapper
                     throw new IllegalStateException("Failed to rollback mapping");
                 }
 
-                throw new IllegalStateException("Path is already mapped to exisiting inode number");
+                throw new IllegalStateException("Path is already mapped to existing inode number");
             }
         });
     }
