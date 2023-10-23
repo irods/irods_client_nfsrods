@@ -14,19 +14,30 @@
 # From within an NFSRODS mount point where you have full permission, meaning
 # your iRODS home collection or a sub-collection, run the following command:
 #
-#   $ bats test_nfsrods.bats
+#   bats /path/to/irods_client_nfsrods/test/irods_tests.bats
 #
 
-LS_EXECUTABLE=/bin/ls
-SANDBOX=${PWD}/nfsrods_testing_sandbox
+# This is run before the "first" call to "setup".
+setup_file() {
+    export LS_EXECUTABLE=/bin/ls
+    export SANDBOX=${PWD}/nfsrods_testing_sandbox
+}
 
+# This is run after the "last" call to "teardown".
+teardown_file() {
+    unset LS_EXECUTABLE
+    unset SANDBOX
+}
+
+# This is run before each test.
 setup() {
     mkdir -p ${SANDBOX}
     cd ${SANDBOX}
 }
 
+# This is run after each test.
 teardown() {
-    cd ..
+    cd ${SANDBOX}/..
     rm -rf ${SANDBOX}
 }
 
@@ -88,20 +99,21 @@ teardown() {
 }
 
 @test "listing directory with large number of entries does not trigger duplicate cookie error" {
-    run parallel mkdir -p ::: c{001..125}
-    [ $status -eq 0 ]
+    parallel mkdir -p ::: c{001..125}
 
     run ${LS_EXECUTABLE}
     [[ ! $(dmesg | tail | grep 'has duplicate cookie') ]]
+
+    parallel rmdir ::: c{001..125}
 }
 
 @test "listing directory with large number of entries prints all entries" {
-    run parallel touch ::: foo{0001..6000}
+    parallel touch ::: f{0001..6000}
 
     result="$(${LS_EXECUTABLE} | wc -l)"
     [ "$result" -eq 6000 ]
 
-    run parallel rm ::: foo{0001..6000}
+    parallel rm ::: f{0001..6000}
 }
 
 @test "create and remove directory" {
@@ -210,3 +222,54 @@ teardown() {
     [ "$output" = "${FILENAME_COPIED}" ]
 }
 
+@test "ls does not report stale file handle error (data objects)" {
+    # The sequence of operations executed in this test are required to
+    # properly reproduce the error.
+    #
+    # DO NOT modify the behavior of this test!
+
+    local DIRECTORY="test.$(date +%s).d"
+    mkdir ${DIRECTORY}
+    rmdir ${DIRECTORY}
+
+    mkdir ${DIRECTORY}
+    cd ${DIRECTORY}
+
+    local FILENAME=foo
+    touch ${FILENAME}
+    rm ${FILENAME}
+
+    # THIS IS THE REAL TEST.
+    # Listing the contents of the collection should not result
+    # in an error (i.e. normally returns 2 if there's error).
+    ${LS_EXECUTABLE}
+
+    cd ..
+    rmdir ${DIRECTORY}
+}
+
+@test "ls does not report stale file handle error (collections)" {
+    # The sequence of operations executed in this test are required to
+    # properly reproduce the error.
+    #
+    # DO NOT modify the behavior of this test!
+
+    local DIRECTORY="test.$(date +%s).d"
+    mkdir ${DIRECTORY}
+    rmdir ${DIRECTORY}
+
+    mkdir ${DIRECTORY}
+    cd ${DIRECTORY}
+
+    local NEW_DIRECTORY=foo.d
+    mkdir ${NEW_DIRECTORY}
+    rmdir ${NEW_DIRECTORY}
+
+    # THIS IS THE REAL TEST.
+    # Listing the contents of the collection should not result
+    # in an error (i.e. normally returns 2 if there's error).
+    ${LS_EXECUTABLE}
+
+    cd ..
+    rmdir ${DIRECTORY}
+}

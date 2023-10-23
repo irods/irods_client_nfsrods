@@ -131,16 +131,16 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
     private final MutableConfiguration<String, ObjectType> objectTypeCacheConfig_; // Key: <path>
     private final Cache<String, ObjectType> objectTypeCache_;                      // Key: <path>
-    
+
     private final MutableConfiguration<String, Object> permsCacheConfig_; // Key: <path>
     private final Cache<String, Object> permsCache_;                      // Key: <path>
-    
+
     private final MutableConfiguration<String, UserTypeEnum> userTypeCacheConfig_; // Key: <username>
     private final Cache<String, UserTypeEnum> userTypeCache_;                      // Key: <username>
-    
+
     private final MutableConfiguration<String, Object> listOpCacheConfig_; // Key: <username>#<collection>
     private final Cache<String, Object> listOpCache_;                      // Key: <username>#<collection>
-    
+
     // Special paths within iRODS.
     private final Path ROOT_COLLECTION;
     private final Path ZONE_COLLECTION;
@@ -290,6 +290,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                 }
             }
             
+            listOpCache_.remove(acct.getUserName() + "#" + parentPath.toString());
+            statObjectCache_.remove(acct.getUserName() + "_" + parentPath.toString());
+            statObjectCache_.remove(acct.getUserName() + "_" + path.toString());
+
             CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(adminAcct_);
             ObjStat objStat = lao.retrieveObjectStatForPath(newFile.getAbsolutePath());
             
@@ -1123,9 +1127,10 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
         try
         {
             Path parentPath = getPath(toInodeNumber(_inode));
+            Path path = parentPath.resolve(_path);
 
             IRODSAccount acct = getCurrentIRODSUser().getAccount();
-            IRODSFile file = factory_.getIRODSFileFactory(acct).instanceIRODSFile(parentPath.toString(), _path);
+            IRODSFile file = factory_.getIRODSFileFactory(acct).instanceIRODSFile(path.toString());
 
             file.mkdir();
             file.close();
@@ -1137,6 +1142,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             // To get around this limitation, NFSRODS must manually clear this cache
             // so that the user sees the updates.
             listOpCache_.remove(acct.getUserName() + "#" + parentPath.toString());
+            statObjectCache_.remove(acct.getUserName() + "_" + parentPath.toString());
+            statObjectCache_.remove(acct.getUserName() + "_" + path.toString());
 
             CollectionAndDataObjectListAndSearchAO lao = factory_.getCollectionAndDataObjectListAndSearchAO(adminAcct_);
             ObjStat objStat = lao.retrieveObjectStatForPath(file.getAbsolutePath());
@@ -1191,7 +1198,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
             
             // Capture the existence of the destination path. This is required to properly
             // update the mappings between inode numbers and paths.
-            final boolean unmapDstPath = dstFile.exists();
+            final boolean dstFileExists = dstFile.exists();
+            final boolean dstFileIsDataObject = (dstFileExists && dstFile.isFile());
 
             try (AutoClosedIRODSFile ac0 = new AutoClosedIRODSFile(srcFile);
                  AutoClosedIRODSFile ac1 = new AutoClosedIRODSFile(dstFile))
@@ -1212,9 +1220,13 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             log_.debug("move - Updating mappings between paths and inodes ...");
 
-            // If the destination path exists in iRODS and has been mapped by the NFSRODS
-            // server, then that path must be unmapped before remapping to avoid an exception.
-            if (unmapDstPath)
+            // If the destination path represents a data object, unmap it. This reflects
+            // the fact that if both the source and destination represent files, the destination
+            // object will no longer exist.
+            //
+            // iRODS does not support renaming over an existing collection, so operations such
+            // as "mv -T" are not supported.
+            if (dstFileIsDataObject)
             {
                 Long inodeNumber = inodeToPathMapper_.getInodeNumberByPath(dstPath);
 
@@ -1224,6 +1236,7 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
                 }
             }
 
+            // Always map the inode number of the source path to the destination path.
             inodeToPathMapper_.remap(getInodeNumber(srcPath), srcPath, dstPath);
 
             // Because iRODS timestamps are stored in seconds, operations that trigger
