@@ -1025,7 +1025,8 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
                     if (null == inodeNumber)
                     {
-                        inodeToPathMapper_.map((long) e.getId(), path);
+                        inodeNumber = (long) e.getId();
+                        inodeToPathMapper_.map(inodeNumber, path);
                     }
                     
                     Stat stat = statPath(path, inodeNumber, e, groupsContainingUser);
