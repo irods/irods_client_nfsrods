@@ -273,3 +273,45 @@ teardown() {
     cd ..
     rmdir ${DIRECTORY}
 }
+
+@test "#178: adjust size of file" {
+    local FILENAME='truncate_test.txt'
+    local MESSAGE='hello, world!'
+
+    # Create a non-empty file.
+    echo "${MESSAGE}" > ${FILENAME}
+    run cat ${FILENAME}
+    #echo "# status = $status" >&3
+    #echo "# output = $output" >&3
+    [ "$status" -eq 0 ]
+    [ "$output" = "${MESSAGE}" ]
+
+    # Overwrite the contents of the file with a new message.
+    # The use of ">" is the real test. If the NFSRODS code is correct, the
+    # file will be truncated to zero first.
+    local NEW_MESSAGE='hello, NFSRODS!'
+    echo "${NEW_MESSAGE}" > ${FILENAME}
+    run cat ${FILENAME}
+    #echo "# status = $status" >&3
+    #echo "# output = $output" >&3
+    [ "$status" -eq 0 ]
+    [ "$output" = "${NEW_MESSAGE}" ]
+
+    # Increase the size of the file.
+    local NEW_DATA_SIZE=256
+    truncate -s${NEW_DATA_SIZE} ${FILENAME}
+    run stat -c%s ${FILENAME}
+    #echo "# status = $status" >&3
+    #echo "# output = $output" >&3
+    [ "$status" -eq 0 ]
+    [ "$output" = "${NEW_DATA_SIZE}" ]
+
+    # Show the original content is still there.
+    # Null bytes were appended during the "truncate" command
+    # and will not appear in the output.
+    run cat ${FILENAME}
+    #echo "# status = $status" >&3
+    #echo "# output = $output" >&3
+    [ "$status" -eq 0 ]
+    [ "$output" = "${NEW_MESSAGE}" ]
+}
