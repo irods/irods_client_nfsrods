@@ -1401,7 +1401,34 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
         if (_stat.isDefined(Stat.StatAttribute.SIZE))
         {
-            log_.warn("setattr - Adjusting the size is not supported");
+            IRODSAccount acct = getCurrentIRODSUser().getAccount();
+
+            try
+            {
+                final var path = getPath(toInodeNumber(_inode));
+                log_.debug("setattr - Setting data size of [{}] to [{}] bytes.", path.toString(), _stat.getSize());
+                factory_.getDataObjectAO(acct).truncateReplica(path.toString(), _stat.getSize());
+
+                // Because iRODS timestamps are stored in seconds, operations that trigger
+                // an mtime update may not be detected by NFSRODS if the operations happen
+                // within the same second.
+                //
+                // To get around this limitation, NFSRODS must manually clear the cache
+                // so that the user sees the updates.
+                final var parentPath = path.getParent();
+                listOpCache_.remove(acct.getUserName() + "#" + parentPath.toString());
+                statObjectCache_.remove(acct.getUserName() + "_" + parentPath.toString());
+                statObjectCache_.remove(acct.getUserName() + "_" + path.toString());
+            }
+            catch (JargonException e)
+            {
+            	log_.error(e.getMessage());
+            	throw new IOException(e);
+            }
+            finally
+            {
+                closeCurrentConnection();
+            }
         }
     }
 
