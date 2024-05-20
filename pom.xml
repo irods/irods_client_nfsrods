@@ -10,7 +10,7 @@
 	<parent>
 		<groupId>org.irods</groupId>
 		<artifactId>jargon-pom</artifactId>
-		<version>4.3.3.0-RELEASE</version>
+		<version>4.3.4.0-SNAPSHOT</version>
 	</parent>
 
 	<packaging>pom</packaging>
@@ -18,7 +18,7 @@
 	<description>iRODS NFS4J Virtual File System</description>
 
 	<properties>
-		<jargon.version>4.3.3.0-RELEASE</jargon.version>
+		<jargon.version>4.3.4.0-SNAPSHOT</jargon.version>
 	</properties>
 
 	<organization>
@@ -30,7 +30,7 @@
 		<repository>
 			<id>dice.repository</id>
 			<name>dice.repository</name>
-			<url>https://raw.github.com/DICE-UNC/DICE-Maven/master/releases</url>
+			<url>https://raw.githubusercontent.com/irods/irods_maven/main/releases</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>
@@ -43,7 +43,7 @@
 		<repository>
 			<id>dice.repository snaps</id>
 			<name>dice.repository.snapshots</name>
-			<url>https://raw.github.com/DICE-UNC/DICE-Maven/master/snapshots</url>
+			<url>https://raw.githubusercontent.com/irods/irods_maven/main/snapshots</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>
