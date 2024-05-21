@@ -1405,6 +1405,11 @@ public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 
             try
             {
+                if (!factory_.getIRODSServerProperties(acct).isAtLeastIrods432())
+                {
+                    throw new IOException("iRODS server does not support rc_replica_truncate API. Requires iRODS 4.3.2 or later.");
+                }
+
                 final var path = getPath(toInodeNumber(_inode));
                 log_.debug("setattr - Setting data size of [{}] to [{}] bytes.", path.toString(), _stat.getSize());
                 factory_.getDataObjectAO(acct).truncateReplica(path.toString(), _stat.getSize());
