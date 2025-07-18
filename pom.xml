@@ -30,7 +30,7 @@
 		<repository>
 			<id>dice.repository</id>
 			<name>dice.repository</name>
-			<url>https://raw.githubusercontent.com/irods/irods_maven/main/releases</url>
+			<url>https://raw.githubusercontent.com/DICE-UNC/DICE-Maven/master/releases</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>
@@ -43,7 +43,7 @@
 		<repository>
 			<id>dice.repository snaps</id>
 			<name>dice.repository.snapshots</name>
-			<url>https://raw.githubusercontent.com/irods/irods_maven/main/snapshots</url>
+			<url>https://raw.githubusercontent.com/DICE-UNC/DICE-Maven/master/snapshots</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>
