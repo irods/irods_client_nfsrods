@@ -45,6 +45,9 @@ import javax.cache.expiry.CreatedExpiryPolicy;
 import javax.cache.expiry.Duration;
 import javax.security.auth.Subject;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import org.dcache.auth.Subjects;
 import org.dcache.nfs.ChimeraNFSException;
 import org.dcache.nfs.status.ExistException;
@@ -103,14 +106,11 @@ import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.primitives.Longs;
 
 public class IRODSVirtualFileSystem implements VirtualFileSystem, AclCheckable
 {
-    private static final Logger log_ = LoggerFactory.getLogger(IRODSVirtualFileSystem.class);
+    private static final Logger log_ = LogManager.getLogger(IRODSVirtualFileSystem.class);
 
     private static final long FIXED_TIMESTAMP = System.currentTimeMillis();
     private static final FsStat FILE_SYSTEM_STAT_INFO = new FsStat(0, 0, 0, 0);

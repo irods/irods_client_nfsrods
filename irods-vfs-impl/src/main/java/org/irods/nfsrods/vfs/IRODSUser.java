@@ -2,18 +2,18 @@ package org.irods.nfsrods.vfs;
 
 import java.nio.file.Paths;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IRODSUser
 {
-    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMapper.class);
+    private static final Logger log_ = LogManager.getLogger(IRODSIdMapper.class);
 
     private IRODSAccount proxiedAcct_;
     private int userID_;
