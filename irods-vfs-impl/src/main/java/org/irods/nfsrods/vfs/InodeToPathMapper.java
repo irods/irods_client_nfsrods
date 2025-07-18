@@ -10,6 +10,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
@@ -21,12 +23,10 @@ import org.irods.nfsrods.config.IRODSClientConfig;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class InodeToPathMapper
 {
-    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMapper.class);
+    private static final Logger log_ = LogManager.getLogger(IRODSIdMapper.class);
 
     private Map<Long, Path> inodeToPath_;
     private Map<Path, Long> pathToInode_;

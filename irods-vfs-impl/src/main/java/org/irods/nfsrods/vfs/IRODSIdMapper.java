@@ -14,14 +14,14 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.dcache.nfs.v4.NfsIdMapping;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.nfsrods.config.IRODSProxyAdminAccountConfig;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.sun.jna.Library;
 import com.sun.jna.Native;
@@ -32,7 +32,7 @@ import com.sun.jna.ptr.IntByReference;
 
 public class IRODSIdMapper implements NfsIdMapping
 {
-    private static final Logger log_ = LoggerFactory.getLogger(IRODSIdMapper.class);
+    private static final Logger log_ = LogManager.getLogger(IRODSIdMapper.class);
 
     private static final LibC libc_ = (LibC) Native.load("c", LibC.class);
 

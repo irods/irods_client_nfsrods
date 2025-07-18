@@ -10,6 +10,7 @@ import javax.cache.Caching;
 import javax.cache.spi.CachingProvider;
 
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.dcache.nfs.ExportFile;
 import org.dcache.nfs.v4.MDSOperationExecutor;
 import org.dcache.nfs.v4.NFSServerV41;
@@ -33,8 +34,6 @@ import org.irods.jargon.pool.conncache.JargonPooledObjectFactory;
 import org.irods.nfsrods.config.NFSServerConfig;
 import org.irods.nfsrods.config.ServerConfig;
 import org.irods.nfsrods.utils.JSONUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ServerMain
 {
@@ -45,7 +44,7 @@ public class ServerMain
     private static final String GIT_PROPERTIES      = "/git.properties";
     // @formatter:on
 
-    private static final Logger log_ = LoggerFactory.getLogger(ServerMain.class);
+    private static final Logger log_ = LogManager.getLogger(ServerMain.class);
     private static final AtomicBoolean shutdownFlag = new AtomicBoolean();
 
     public static void main(String[] args) throws JargonException, IOException

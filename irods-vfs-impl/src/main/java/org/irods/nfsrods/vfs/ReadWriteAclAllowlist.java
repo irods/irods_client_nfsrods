@@ -10,6 +10,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
@@ -21,12 +23,10 @@ import org.irods.jargon.core.query.IRODSQueryResultSet;
 import org.irods.jargon.core.query.JargonQueryException;
 import org.irods.jargon.core.query.QueryConditionOperators;
 import org.irods.jargon.core.query.RodsGenQueryEnum;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ReadWriteAclAllowlist
 {
-    private static final Logger log_ = LoggerFactory.getLogger(ReadWriteAclAllowlist.class);
+    private static final Logger log_ = LogManager.getLogger(ReadWriteAclAllowlist.class);
     
     private static final String GRANT_NFS4_SETFACL_PRIVILEGE = "irods::nfsrods::grant_nfs4_setfacl";
 
