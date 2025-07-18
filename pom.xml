@@ -6,7 +6,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.irods.jargon</groupId>
 	<artifactId>nfs4j-irodsvfs-pom</artifactId>
-	<version>2.3.0</version>
+	<version>2.3.1</version>
 	<parent>
 		<groupId>org.irods</groupId>
 		<artifactId>jargon-pom</artifactId>
